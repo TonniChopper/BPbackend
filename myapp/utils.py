@@ -2,30 +2,60 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from django.conf import settings
-from django.template.context_processors import media
 
-
-def run_simulation(pressure, temperature):
-    # Generate some example data
+def run_simulation_type_1(pressure, temperature):
     x = np.linspace(0, 10, 100)
     y = pressure * np.sin(x) + temperature * np.cos(x)
 
-    # Create a plot
     plt.figure()
-    plt.plot(x, y, label=f'Pressure: {pressure}, Temperature: {temperature}')
+    plt.plot(x, y, 'r-', label=f'Pressure: {pressure}, Temperature: {temperature}')  # Red solid line
     plt.xlabel('X-axis')
     plt.ylabel('Y-axis')
-    plt.title('Simple Graph')
+    plt.title('Graph Type 1')
     plt.legend()
 
-    # Save the plot to a file
-    image_path = os.path.join(settings.MEDIA_ROOT, 'simulations', 'result.png')
+    image_path = os.path.join(settings.MEDIA_ROOT, 'simulations', 'result_type_1.png')
     plt.savefig(image_path)
     plt.close()
 
-    result_data = f"Graph generated for pressure: {pressure}, temperature: {temperature}"
+    result_data = f"Graph Type 1 generated for pressure: {pressure}, temperature: {temperature}"
     return result_data, image_path
 
+def run_simulation_type_2(pressure, temperature):
+    x = np.linspace(0, 10, 100)
+    y = pressure * np.cos(x) - temperature * np.sin(x)
+
+    plt.figure()
+    plt.plot(x, y, 'g--', label=f'Pressure: {pressure}, Temperature: {temperature}')  # Green dashed line
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.title('Graph Type 2')
+    plt.legend()
+
+    image_path = os.path.join(settings.MEDIA_ROOT, 'simulations', 'result_type_2.png')
+    plt.savefig(image_path)
+    plt.close()
+
+    result_data = f"Graph Type 2 generated for pressure: {pressure}, temperature: {temperature}"
+    return result_data, image_path
+
+def run_simulation_type_3(pressure, temperature):
+    x = np.linspace(0, 10, 100)
+    y = pressure * np.tan(x) + temperature * np.tan(x)
+
+    plt.figure()
+    plt.plot(x, y, 'b-.', label=f'Pressure: {pressure}, Temperature: {temperature}')  # Blue dash-dot line
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.title('Graph Type 3')
+    plt.legend()
+
+    image_path = os.path.join(settings.MEDIA_ROOT, 'simulations', 'result_type_3.png')
+    plt.savefig(image_path)
+    plt.close()
+
+    result_data = f"Graph Type 3 generated for pressure: {pressure}, temperature: {temperature}"
+    return result_data, image_path
 # import pyansys
 #
 # def run_simulation(pressure, temperature):

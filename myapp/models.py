@@ -18,6 +18,7 @@ class Graph(models.Model):
     temperature = models.FloatField()
     image = models.ImageField(upload_to='simulations/')
     created_at = models.DateTimeField(auto_now_add=True)
+    simulation_id = models.IntegerField()
 
     def __str__(self):
         return f"Graph for pressure: {self.pressure}, temperature: {self.temperature}"
