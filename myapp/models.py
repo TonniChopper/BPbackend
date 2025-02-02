@@ -1,19 +1,9 @@
 from django.db import models
+from django.contrib.auth.models import User
 import os
 
-# class Simulation(models.Model):
-#     name = models.CharField(max_length=100)
-#     pressure = models.FloatField()
-#     temperature = models.FloatField()
-#     result_data = models.TextField(null=True, blank=True)
-#     result_image = models.ImageField(upload_to='simulations/', null=True, blank=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-#
-#     def __str__(self):
-#         return self.name
-
 class Graph(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Add this line
     pressure = models.FloatField()
     temperature = models.FloatField()
     image = models.ImageField(upload_to='simulations/')
