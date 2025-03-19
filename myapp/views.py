@@ -1,34 +1,61 @@
-# myapp/views.py
-from rest_framework import generics
-from .models import Graph
-from .serializers import GraphSerializer
-from .utils import run_simulation_type_1, run_simulation_type_2, run_simulation_type_3
+from rest_framework import generics, permissions, views, status
+from rest_framework.authtoken.admin import User
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from django.http import FileResponse
+from .models import Simulation
+from .serializers import SimulationSerializer, UserSerializer
+from .tasks import run_simulation_task
 import os
-from django.conf import settings
 
-class GraphListCreate(generics.ListCreateAPIView):
-    queryset = Graph.objects.all()
-    serializer_class = GraphSerializer
+class SimulationListCreateView(generics.ListCreateAPIView):
+    serializer_class = SimulationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.request.user.simulations.all()
 
     def perform_create(self, serializer):
-        graph = serializer.save(user=self.request.user)  # Set the user field
-        simulation_id = graph.simulation_id
+        simulation = serializer.save(user=self.request.user)
+        # Start the simulation asynchronously.
+        run_simulation_task.delay(simulation.id)
 
-        if simulation_id == 1:
-            result_data, result_image_path = run_simulation_type_1(graph.pressure, graph.temperature)
-        elif simulation_id == 2:
-            result_data, result_image_path = run_simulation_type_2(graph.pressure, graph.temperature)
-        elif simulation_id == 3:
-            result_data, result_image_path = run_simulation_type_3(graph.pressure, graph.temperature)
-        else:
-            raise ValueError("Invalid simulation ID")
+class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SimulationSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-        graph.image = os.path.relpath(result_image_path, settings.MEDIA_ROOT)
-        graph.save()
+    def get_queryset(self):
+        return self.request.user.simulations.all()
 
-class GraphDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Graph.objects.all()
-    serializer_class = GraphSerializer
+class SimulationDownloadView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get_object(self):
-        return super().get_object()
+    def get(self, request, pk, format=None):
+        try:
+            simulation = Simulation.objects.get(pk=pk, user=request.user)
+        except Simulation.DoesNotExist:
+            return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if simulation.simulation_result:
+            file_path = simulation.simulation_result.path
+            if os.path.isfile(file_path):
+                return FileResponse(
+                    open(file_path, 'rb'),
+                    as_attachment=True,
+                    filename=os.path.basename(file_path)
+                )
+            return Response({'detail': 'File not found on server.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'No simulation result available.'}, status=status.HTTP_404_NOT_FOUND)
+
+class CreateUserView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return User.objects.all()
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.set_password(instance.password)
+        instance.save()

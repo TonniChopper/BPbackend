@@ -1,7 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
-from .models import Graph
+from myapp.models import Simulation
 
 # admin.site.register(Simulation)
-admin.site.register(Graph)
+admin.site.register(Simulation)

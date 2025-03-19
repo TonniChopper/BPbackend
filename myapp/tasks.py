@@ -1,30 +1,36 @@
-from celery import shared_task
-from .models import Graph
-from .utils import run_simulation_type_1, run_simulation_type_2, run_simulation_type_3
 import os
-from django.conf import settings
+import logging
 import redis
+from celery import shared_task
+from .models import Simulation
+from .utils import run_simulation
 
-@shared_task
-def generate_graph(graph_id):
-    graph = Graph.objects.get(id=graph_id)
-    simulation_id = graph.simulation_id
+logger = logging.getLogger(__name__)
 
-    simulation_functions = {
-        1: run_simulation_type_1,
-        2: run_simulation_type_2,
-        3: run_simulation_type_3
-    }
-    if simulation_id in simulation_functions:
-        result_data, result_image_path = simulation_functions[simulation_id](graph.pressure, graph.temperature)
-    else:
-        raise ValueError("Invalid simulation ID")
-
-    graph.image = os.path.relpath(result_image_path, settings.MEDIA_ROOT)
-    graph.save()
-
-r = redis.Redis(
+# Setup Redis connection using the provided parameters
+redis_client = redis.Redis(
     host='redis-12610.c300.eu-central-1-1.ec2.redns.redis-cloud.com',
     port=12610,
-    password='euzl8ptRLsx3ielfGGP9th2mLaoWmLtC'
+    password='euzl8ptRLsx3ielfGGP9th2mLaoWmLtC',
+    decode_responses=True
 )
+
+
+@shared_task
+def run_simulation_task_with_redis(simulation_id):
+    """
+    Celery task that runs the simulation and caches the result in Redis.
+    """
+    try:
+        result_data, result_file_path = run_simulation()
+        simulation = Simulation.objects.get(pk=simulation_id)
+        if result_file_path and os.path.isfile(result_file_path):
+            simulation.simulation_result = os.path.relpath(result_file_path)
+            simulation.save()
+        # Store the simulation result path in Redis with a 1-day expiration
+        redis_key = f"simulation_result:{simulation_id}"
+        redis_client.set(redis_key, result_file_path, ex=86400)
+        return {'simulation_id': simulation_id, 'result_file_path': result_file_path}
+    except Exception as e:
+        logger.error(f"Error during simulation {simulation_id}: {e}", exc_info=True)
+        return {'simulation_id': simulation_id, 'error': str(e)}
