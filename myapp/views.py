@@ -1,41 +1,64 @@
-from rest_framework import generics, permissions, views, status
-from rest_framework.authtoken.admin import User
-from rest_framework.permissions import AllowAny
+# python
+import os
+from rest_framework import generics, views, status
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import FileResponse
 from .models import Simulation
 from .serializers import SimulationSerializer, UserSerializer
-from .tasks import run_simulation_task
-import os
+from .tasks import run_simulation_task_with_redis
 
 class SimulationListCreateView(generics.ListCreateAPIView):
     serializer_class = SimulationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return self.request.user.simulations.all()
+        # Return simulations only for authenticated users
+        if self.request.user.is_authenticated:
+            return self.request.user.simulation_set.all()
+        return Simulation.objects.none()
 
     def perform_create(self, serializer):
-        simulation = serializer.save(user=self.request.user)
-        # Start the simulation asynchronously.
-        run_simulation_task.delay(simulation.id)
+        # If the user is authenticated, store the simulation for 2 days;
+        # Otherwise, simulation is created without persistence and download
+        user = self.request.user if self.request.user.is_authenticated else None
+        simulation = serializer.save(user=user)
+        run_simulation_task_with_redis.delay(simulation.id, simulation.parameters)
+
 
 class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = SimulationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.simulations.all()
+        return self.request.user.simulation_set.all()
+
+class SimulationResumeView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, format=None):
+        try:
+            simulation = Simulation.objects.get(pk=pk, user=request.user)
+        except Simulation.DoesNotExist:
+            return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not simulation.is_active:
+            return Response({'detail': 'Simulation expired, cannot resume.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Restart simulation with saved parameters
+        run_simulation_task_with_redis.delay(simulation.id, simulation.parameters)
+        return Response({'detail': 'Simulation resumed.'}, status=status.HTTP_200_OK)
 
 class SimulationDownloadView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, format=None):
         try:
             simulation = Simulation.objects.get(pk=pk, user=request.user)
         except Simulation.DoesNotExist:
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
-
+        # If simulation was created by an unauthenticated (ephemeral) user, deny download.
+        if simulation.user is None:
+            return Response({'detail': 'Download not available for unauthenticated simulation.'},
+                            status=status.HTTP_403_FORBIDDEN)
         if simulation.simulation_result:
             file_path = simulation.simulation_result.path
             if os.path.isfile(file_path):
@@ -45,17 +68,31 @@ class SimulationDownloadView(views.APIView):
                     filename=os.path.basename(file_path)
                 )
             return Response({'detail': 'File not found on server.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response({'detail': 'No simulation result available.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Simulation result not available.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class SimulationStatusView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, format=None):
+        """
+        Returns current simulation status data including the URL of the snapshot image.
+        The frontend can poll this endpoint while the simulation is running.
+        """
+        try:
+            simulation = Simulation.objects.get(pk=pk, user=request.user)
+        except Simulation.DoesNotExist:
+            return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        status_data = {
+            'id': simulation.id,
+            'parameters': simulation.parameters,
+            'is_active': simulation.is_active,
+            # If simulation_result points to an image (e.g. .png), it can be shown as interactive snapshot.
+            'snapshot_url': simulation.simulation_result.url if simulation.simulation_result and simulation.simulation_result.path.endswith('.png') else None
+        }
+        return Response(status_data, status=status.HTTP_200_OK)
 
 class CreateUserView(generics.CreateAPIView):
-    queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        return User.objects.all()
-
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        instance.set_password(instance.password)
-        instance.save()

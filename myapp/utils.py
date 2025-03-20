@@ -1,5 +1,7 @@
+import os
 from ansys.mapdl.core import launch_mapdl
 import logging
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +61,21 @@ def run_simulation(length=5, width=2.5, depth=0.1, radius=0.5, num=3, e=2e11, nu
 
         # Plot principal nodal stresses with specified plot options
         result = mapdl.result
-        result.plot_principal_nodal_stress(0, 'seqv', background='w', show_edges=True, text_color='k', add_text=True)
+        fig = result.plot_principal_nodal_stress(0, 'seqv', background='w', show_edges=True, text_color='k',
+                                                 add_text=True)
 
-        # Exit MAPDL session
+        # Use MEDIA_ROOT to build the full path for simulations folder
+        simulations_dir = os.path.join(settings.MEDIA_ROOT, "simulations")
+        os.makedirs(simulations_dir, exist_ok=True)
+        image_file_path = os.path.join(simulations_dir, f"simulation_{length}_{width}_{depth}.png")
+        fig.savefig(image_file_path)
+
+        result_file_path = os.path.join(simulations_dir, f"simulation_{length}_{width}_{depth}.txt")
+        with open(result_file_path, 'w') as file:
+            file.write("Simulation completed successfully. Snapshot saved at " + image_file_path)
+
         mapdl.exit()
+        return result_file_path
     except Exception as e:
         logger.error(f"Simulation failed: {e}", exc_info=True)
         raise e

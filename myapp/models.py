@@ -15,6 +15,7 @@ class Simulation(models.Model):
         null=True,
         blank=True
     )
+    parameters = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_active(self):
