@@ -7,7 +7,7 @@ class SimulationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Simulation
-        fields = ['id', 'user', 'simulation_result', 'created_at', 'is_active']
+        fields = ['id', 'user', 'parameters', 'simulation_result', 'created_at', 'is_active']
         extra_kwargs = {
             'user': {'read_only': True},
             'simulation_result': {'required': False}
