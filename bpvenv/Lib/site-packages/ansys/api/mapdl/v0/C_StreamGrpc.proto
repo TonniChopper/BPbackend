@@ -1,0 +1,82 @@
+syntax = "proto3";
+package ansys.api.grpcstream.v0;
+option csharp_namespace =  "Ansys.Api.GrpcStream.V0";
+
+// import "google/protobuf/empty.proto";
+import "ansys/api/mapdl/v0/ansys_kernel.proto";
+
+// ================================================================================
+// =====
+// ===== OPEN / CLOSE MSGS
+
+message OpenRequest {
+  string	filename = 1;
+  int32		mode	 = 2;
+}
+
+message OpenResponse {
+  bool		succeed = 1;
+  string	msg     = 2;
+}
+
+message CloseRequest {
+  string	filename = 1;
+}
+
+message CloseResponse {
+  bool		succeed = 1;
+  string	msg     = 2;
+}
+
+// ================================================================================
+// =====
+// ===== SEEK / TELL MSGS
+
+message SeekRequest {
+  string	filename = 1;
+  int64		offset = 2;
+  int32		whence = 3;
+}
+
+message SeekResponse {
+  int64		offset = 1;
+}
+
+message TellRequest {
+  string	filename = 1;
+}
+
+message TellResponse {
+  int64		offset = 1;
+}
+
+// ================================================================================
+// =====
+// ===== READ / WRITE MSGS
+
+message ReadRequest {
+  string			filename = 1;
+  kernel.v0.StreamRequest	streamreq = 2;
+  int64				size = 3;
+}
+
+message WriteRequest {
+  string			filename = 1;
+  int64				size = 2;
+}
+
+message WriteResponse {
+}
+
+
+service C_StreamGrpcService
+{
+  rpc Open(   OpenRequest)		returns (  OpenResponse);
+  rpc Close( CloseRequest)		returns ( CloseResponse);
+
+  rpc Seek( SeekRequest)		returns ( SeekResponse);
+  rpc Tell( TellRequest)		returns ( TellResponse);
+
+  rpc Read( ReadRequest)		returns ( stream kernel.v0.Chunk);
+  rpc Write( stream kernel.v0.Chunk)	returns ( WriteResponse);
+}

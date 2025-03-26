@@ -1,0 +1,2 @@
+[ansys.tools.protoc_helper.proto_provider]
+ansys.api.mapdl.v0 = ansys.api.mapdl.v0

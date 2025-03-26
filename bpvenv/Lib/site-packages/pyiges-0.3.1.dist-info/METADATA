@@ -1,0 +1,123 @@
+Metadata-Version: 2.1
+Name: pyiges
+Version: 0.3.1
+Summary: Pythonic IGES reader
+Home-page: https://github.com/pyvista/pyiges
+Author: PyVista Developers
+Author-email: info@pyvista.org
+License: MIT
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: MacOS
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Description-Content-Type: text/x-rst
+Requires-Dist: tqdm
+Requires-Dist: numpy
+Provides-Extra: full
+Requires-Dist: geomdl ; extra == 'full'
+Requires-Dist: pyvista (>=0.28.0) ; extra == 'full'
+
+pyIGES
+======
+Python IGES reader with basic functionality to read an IGES file and
+convert some entities to a ``pyvista`` or ``vtk`` mesh.
+
+This module can read in and perform basic parsing of all entities and
+can perform additional parsing and geometry visualization of the
+following entities:
+
+- Vertex List (Type 502 Form 1)
+- Edge List
+- Loop (for specifying a bounded face for BREP geometries
+- Face
+- Circular arc
+- Rational B-Spline Surface
+- Rational B-Spline Curve
+- Conic Arc (Type 104)
+- Line
+- Point
+
+
+Installation
+------------
+
+``pyiges`` is offered in a "full" variant including the conversion features
+and a "pure" parsing module variant.
+The pure variant has no conversion features, no dependencies to ``pyvista,geomdl``,
+and can be installed by removing the ``[full]`` specificator from the following commands.
+
+Install with pip using:
+
+.. code::
+
+   pip install pyiges[full]
+
+Otherwise, if you want the bleeding edge version, feel free to clone
+this repo and install with:
+
+.. code:: bash
+
+   git clone https://github.com/pyvista/pyiges
+   cd pyiges
+   pip install .[full]
+
+Note that the square brackets might need to be escaped or quoted when using ``zsh``.
+
+
+Usage
+-----
+The ``pyiges`` module can read in many entities as raw text, but only
+NURBS surfaces and bsplines can be converted to ``pyvista`` meshes.
+
+.. code:: python
+
+    import pyiges
+    from pyiges import examples
+
+    # load an example impeller
+    iges = pyiges.read(examples.impeller)
+
+    # print an invidiual entity (boring)
+    print(iges[0])
+
+    # convert all lines to a vtk mesh and plot it
+    lines = iges.to_vtk(bsplines=True, surfaces=False, merge=True)
+    lines.plot(color='w', line_width=2)
+
+    # convert all surfaces to a vtk mesh and plot it
+    mesh = iges.to_vtk(bsplines=False, surfaces=True, merge=True, delta=0.05)
+    mesh.plot(color='w', smooth_shading=True)
+    # control resolution of the mesh by changing "delta"
+
+    # save this surface to file
+    mesh.save('mesh.ply')  # as ply
+    mesh.save('mesh.stl')  # as stl
+    mesh.save('mesh.vtk')  # as vtk
+
+
+Lines
+~~~~~
+.. image:: https://github.com/pyvista/pyiges/raw/main/docs/images/impeller_lines.png
+
+
+Surfaces
+~~~~~~~~
+.. image:: https://github.com/pyvista/pyiges/raw/main/docs/images/impeller_surf.png
+
+
+
+Acknowledgments
+---------------
+Substantial code was obtained from or inspired by https://github.com/cfinch/IGES-File-Reader
+
+IGES reference definitions were obtained from `Eclipse IGES Wiki <https://wiki.eclipse.org/IGES_file_Specification#Rational_B-Spline_Curve_.28Type_126.29>`_,
+
+

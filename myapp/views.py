@@ -1,4 +1,3 @@
-# python
 import os
 from rest_framework import generics, views, status
 from rest_framework.response import Response
@@ -7,6 +6,7 @@ from django.http import FileResponse
 from .models import Simulation
 from .serializers import SimulationSerializer, UserSerializer
 from .tasks import run_simulation_task_with_redis
+from .utils import run_simulation
 
 class SimulationListCreateView(generics.ListCreateAPIView):
     serializer_class = SimulationSerializer
@@ -15,7 +15,7 @@ class SimulationListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         # Return simulations only for authenticated users
         if self.request.user.is_authenticated:
-            return self.request.user.simulation_set.all()
+            return self.request.user.is_authenticated
         return Simulation.objects.none()
 
     def perform_create(self, serializer):
@@ -23,7 +23,9 @@ class SimulationListCreateView(generics.ListCreateAPIView):
         # Otherwise, simulation is created without persistence and download
         user = self.request.user if self.request.user.is_authenticated else None
         simulation = serializer.save(user=user)
-        run_simulation_task_with_redis.delay(simulation.id, simulation.parameters)
+        # run_simulation(simulation.parameters)
+        params = simulation.parameters
+        run_simulation(**params)
 
 
 class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):

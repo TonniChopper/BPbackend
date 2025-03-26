@@ -1,0 +1,203 @@
+! Copyright (C) 2024 ANSYS, Inc. and/or its affiliates.
+! SPDX-License-Identifier: MIT
+! 
+!
+! Permission is hereby granted, free of charge, to any person obtaining a copy
+! of this software and associated documentation files (the "Software"), to deal
+! in the Software without restriction, including without limitation the rights
+! to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+! copies of the Software, and to permit persons to whom the Software is
+! furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all
+! copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+! IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+! FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+! AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+! LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+! SOFTWARE.
+
+/COM,ANSYS MEDIA REL. 2023R2 (05/12/2023) REF. VERIF. MANUAL: REL. 2023R2
+/VERIFY,VMC3
+/SHOW
+/TITLE, VMC3, BARREL VAULT ROOF UNDER SELF WEIGHT
+/COM, REF:  COOK, CONCEPTS AND APPL OF F.E.A., 2ND ED., 1981, PP. 284-287.
+*DIM,NARAY,TABLE,8,7            ! 2-D NARAY FOR RESULTS INFO
+
+*DO,I,1,8
+	*IF,I,EQ,1,THEN
+		ARG1 = 4
+		ARG2 = 0
+		ARG3 = 1
+		ETYP = 281
+        !VMC3 - QUADRILATERAL MESH (N = 4)
+	*ELSEIF,I,EQ,2,THEN
+		ARG1 = 8
+		ARG2 = 0
+		ARG3 = 1
+		ETYP = 281
+        !VMC3 - QUADRILATERAL MESH (N = 8)
+	*ELSEIF,I,EQ,3,THEN
+		ARG1 = 4
+		ARG2 = 0
+		ARG3 = 1
+		ETYP = 181
+        !VMC3 - QUADRILATERAL MESH (N = 4)
+	*ELSEIF,I,EQ,4,THEN
+		ARG1 = 8
+		ARG2 = 0
+		ARG3 = 1
+		ETYP = 181
+        !VMC3 - QUADRILATERAL MESH (N = 8)
+	*ELSEIF,I,EQ,5,THEN
+		ARG1 = 4
+		ARG2 = 1
+		ARG3 = 0
+		ETYP = 281
+        !VMC3 - TRIANGLE MESH (N = 4)
+	*ELSEIF,I,EQ,6,THEN
+		ARG1 = 8
+		ARG2 = 1
+		ARG3 = 0
+		ETYP = 281
+        !VMC3 - TRIANGLE MESH (N = 8)	
+	*ELSEIF,I,EQ,7,THEN
+		ARG1 = 4
+		ARG2 = 1
+		ARG3 = 0
+		ETYP = 181
+        !VMC3 - TRIANGLE MESH (N = 4)
+	*ELSEIF,I,EQ,8,THEN
+		ARG1 = 8
+		ARG2 = 1
+		ARG3 = 0
+		ETYP = 181
+        !VMC3 - TRIANGLE MESH (N = 8)
+	*ENDIF	
+	
+	
+  PARSAV,ALL
+  /CLEAR, NOSTART
+  PARRES,CHANGE
+  /PREP7
+  SMRT,OFF
+  
+  
+  *IF,I,LE,4,THEN
+	 /TITLE, VMC3 - QUADRILATERAL MESH (N = %ARG1%)
+	*ELSEIF,I,GT,THEN
+	 /TITLE, VMC3 - TRIANGLE MESH (N = %ARG1%)
+	*ENDIF 
+  
+  
+ /OUT,SCRATCH
+  ANTYPE,STATIC
+  ET,1,ETYP                        ! DEFINE ELEMENT TYPE PARAMETRICALLY
+  *IF,ETYP,EQ,181,THEN
+    KEYOPT,1,3,2
+  *ENDIF
+  MP,EX,1,4.32E8                   ! DEFINE MATERIAL PROPERTIES
+  MP,NUXY,1,0.0
+  R,1,0.25
+  MP,DENS,1,36.7347
+  CSYS,1                           ! DEFINE CYLINDRICAL C.S.
+  K,1,25,50
+  K,2,25,70                        ! DEFINE KEYPOINTS
+  K,3,25,90
+  KGEN,3,1,3,1,,,12.5
+  A,1,2,5,4
+  A,2,3,6,5                        ! DEFINE AREAS
+  A,4,5,8,7
+  A,5,6,9,8
+  ESIZE,,ARG1/2
+  MSHAPE,ARG2
+  MSHKEY,ARG3
+  AMESH,ALL                        ! MESH ALL AREAS
+  /VIEW,1,1,1,1
+  NARAY(I,2)=ARG1                  ! STORE N1
+  NARAY(I,3)=ARG2                  ! STORE N2
+  *GET,MAXN,NODE,,NUM,MAX          ! GET MAX NODE NUMBER
+  NARAY(I,4)=MAXN*6                ! CALCULATE NO. DEGREES OF FREEDOM
+  NSEL,S,LOC,Z,0
+  NSEL,R,LOC,Y,50                  ! SELECT NODE OF INTEREST
+  *GET,N1,NODE,,NUM,MAX            ! GET NODE NUMBER
+  NSEL,S,LOC,Z,0
+  NSEL,R,LOC,Y,90
+  *GET,N2,NODE,,NUM,MAX            ! GET NODE NUMBER
+  NSEL,ALL
+  CSYS,0                           ! SWITCH TO GLOBAL CARTESIAN C.S.
+  NSEL,S,LOC,X,0
+  DSYM,SYMM,X,0
+  NSEL,S,LOC,Z,0
+  DSYM,SYMM,Z,0
+  NSEL,S,LOC,Z,25
+  D,ALL,UX,0,,,,UY,ROTZ            ! CONSTRAIN MODEL EDGE
+  NSEL,ALL
+  ACEL,,9.8                        ! DEFINE GRAVITATIONAL ACCELERATION
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!  SETUP AND PLOT ELEMENTS FOR DOCUMENTATION !!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+  *IF,ETYP,EQ,181,THEN
+     /AUTO,1
+     /VIEW,1,0.5,0.5,0.5
+     /ANG,1,6.28
+     /DEVICE,VECTOR,1
+     /DEVICE,DITHER,1
+     /TYPE,ALL,4
+     /COLOR,NUM,BLUE,1
+  
+     /SHOW,PNG,REV
+     EPLOT
+     /SHOW,CLOSE
+  *ENDIF
+
+  /SHOW,GRPH
+  /TITLE, VMC3, BARREL VAULT ROOF UNDER SELF WEIGHT
+  FINISH
+  /SOLU
+  SOLVE
+  FINISH
+  /POST1
+  SHELL,MID                        ! SELECT BOTTOM SURFACE
+  *GET,UY1,NODE,N1,U,Y             ! GET UY AT NODE N1
+  NARAY(I,5)=-(UY1/.3016)          ! CALCULATE NORMALIZED UY1 W/R TO TARGET
+  RSYS,1                           ! ACTIVATE CYLINDRICAL C.S. FOR RESULTS
+  SHELL,BOT                        ! SELECT BOTTOM SURFACE
+  *GET,SY2B,NODE,N2,S,Y            ! GET CIRCUMFERENTIAL (Y) STRESS AT BOTTOM
+  NARAY(I,7)=(SY2B/(-213400))      ! CALCULATE NORMALIZED SY2B
+  *GET,SZ1B,NODE,N1,S,Z            ! GET AXIAL (Z) STRESS AT BOTTOM
+  NARAY(I,6)=(SZ1B/358420)         ! CALCULATE NORMALIZED SZ1B
+  PARSAV,,PARAM
+  FINISH
+
+*ENDDO
+  
+  *DO,COL,1,2                      ! INITIALIZE COLUMN 1 WITH ELEMENT TYPES
+     NARAY(COL,1)=281
+     NARAY(COL+2,1)=181
+	 NARAY(COL+4,1)=281
+	 NARAY(COL+6,1)=181
+  *ENDDO
+  
+
+SAVE,
+FINISH
+RESUME,
+
+/OUT,VMC3,VRT
+/OUT
+/COM
+/COM,------------------- VMC3 RESULTS LISTING ------------------------------------
+/COM,
+/COM,| ETYP | N  | DOF   |  UY(1)  | SIG-Z  | SIG-TH  |
+/COM,
+*VWRITE,NARAY(1,1),NARAY(1,2),NARAY(1,4),NARAY(1,5),NARAY(1,6),NARAY(1,7)
+(F5.0,'  ',F5.0,'  ',F5.0,' ',F10.3,'  ',F7.3,'     ',F5.3)
+/COM,-----------------------------------------------------------------------------
+/OUT
+*LIST,VMC3,VRT
+FINISH

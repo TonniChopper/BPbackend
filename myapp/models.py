@@ -8,7 +8,8 @@ class Simulation(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='simulations'
+        related_name='simulations',
+        null=True,
     )
     simulation_result = models.FileField(
         upload_to='simulations/',

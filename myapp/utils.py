@@ -5,6 +5,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+
 def run_simulation(length=5, width=2.5, depth=0.1, radius=0.5, num=3, e=2e11, nu=0.27, pressure=1000):
     try:
         mapdl = launch_mapdl()
@@ -59,10 +60,25 @@ def run_simulation(length=5, width=2.5, depth=0.1, radius=0.5, num=3, e=2e11, nu
         output = mapdl.solve()
         print(output)
 
-        # Plot principal nodal stresses with specified plot options
+        # mapdl.post1()  # Enter the post-processing step
+
+        # if mapdl.result is None or not mapdl.result.num_times():
+        #     raise ValueError("No valid result data available for plotting.")
+
         result = mapdl.result
+        # available_variables = result.available_variables()
+        # print(f"Available variables: {available_variables}")
+
+        # Check if 'seqv' variable exists in the results
+        # if 'seqv' not in available_variables:
+        #     raise ValueError("'seqv' variable not found in the results.")
+
+        # Plot principal nodal stresses
         fig = result.plot_principal_nodal_stress(0, 'seqv', background='w', show_edges=True, text_color='k',
                                                  add_text=True)
+        mapdl.exit()
+        if fig is None:
+            raise ValueError("Plot generation failed.")
 
         # Use MEDIA_ROOT to build the full path for simulations folder
         simulations_dir = os.path.join(settings.MEDIA_ROOT, "simulations")
@@ -74,7 +90,7 @@ def run_simulation(length=5, width=2.5, depth=0.1, radius=0.5, num=3, e=2e11, nu
         with open(result_file_path, 'w') as file:
             file.write("Simulation completed successfully. Snapshot saved at " + image_file_path)
 
-        mapdl.exit()
+
         return result_file_path
     except Exception as e:
         logger.error(f"Simulation failed: {e}", exc_info=True)
