@@ -15,7 +15,7 @@ class SimulationListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         # Return simulations only for authenticated users
         if self.request.user.is_authenticated:
-            return self.request.user.is_authenticated
+            return self.request.user.simulations.all()
         return Simulation.objects.none()
 
     def perform_create(self, serializer):
@@ -25,7 +25,10 @@ class SimulationListCreateView(generics.ListCreateAPIView):
         simulation = serializer.save(user=user)
         # run_simulation(simulation.parameters)
         params = simulation.parameters
-        run_simulation(**params)
+        result_file_path = run_simulation(**params)
+        # Store the simulation result path into the file field
+        simulation.simulation_result = result_file_path
+        simulation.save()
 
 
 class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -33,7 +36,7 @@ class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.simulation_set.all()
+        return self.request.user.simulations.all()
 
 class SimulationResumeView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -46,7 +49,7 @@ class SimulationResumeView(views.APIView):
         if not simulation.is_active:
             return Response({'detail': 'Simulation expired, cannot resume.'}, status=status.HTTP_400_BAD_REQUEST)
         # Restart simulation with saved parameters
-        run_simulation_task_with_redis.delay(simulation.id, simulation.parameters)
+        run_simulation(simulation.parameters)
         return Response({'detail': 'Simulation resumed.'}, status=status.HTTP_200_OK)
 
 class SimulationDownloadView(views.APIView):
