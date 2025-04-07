@@ -1,5 +1,6 @@
 import os
 import json
+import numpy as np
 import matplotlib.pyplot as plt
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -10,13 +11,18 @@ def process_result(result, simulation_id):
     result_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_results', str(simulation_id))
     os.makedirs(result_dir, exist_ok=True)
 
+    # Получаем смещения и вычисляем их нормы
+    displacements = np.array(result.nodal_displacement(0))
+    displacement_norms = np.linalg.norm(displacements, axis=1)
+
     # Сохраняем текстовый результат
     result_file_path = os.path.join(result_dir, 'result.txt')
     with open(result_file_path, 'w') as f:
-        f.write(f"Maximum displacement: {max(result.nodal_displacement(0))}\n")
+        f.write(f"Maximum displacement: {displacement_norms.max()}\n")
         f.write(f"Maximum stress: {result.nodal_eqv_stress().max()}\n")
         # Добавляем больше информации о результатах
-        f.write(f"Minimum displacement: {min(result.nodal_displacement(0))}\n")
+        f.write(f"Minimum displacement: {displacement_norms.min()}\n")
+        f.write(f"Average displacement: {displacement_norms.mean()}\n")
         f.write(f"Average stress: {result.nodal_eqv_stress().mean()}\n")
         f.write(f"Total nodes: {len(result.mesh.nodes)}\n")
         f.write(f"Total elements: {len(result.mesh.elements)}\n")
@@ -98,9 +104,9 @@ def process_result(result, simulation_id):
 
     # Создаем сводку результатов с дополнительной информацией
     summary = {
-        'max_displacement': float(result.nodal_displacement(0).max()),
-        'min_displacement': float(result.nodal_displacement(0).min()),
-        'avg_displacement': float(result.nodal_displacement(0).mean()),
+        'max_displacement': float(displacement_norms.max()),
+        'min_displacement': float(displacement_norms.min()),
+        'avg_displacement': float(displacement_norms.mean()),
         'max_stress': float(result.nodal_eqv_stress().max()),
         'min_stress': float(result.nodal_eqv_stress().min()),
         'avg_stress': float(result.nodal_eqv_stress().mean()),
@@ -125,3 +131,4 @@ def process_result(result, simulation_id):
         'temp_model': temp_model_path,
         'summary': summary
     }
+
