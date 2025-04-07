@@ -1,0 +1,2 @@
+[ansys.tools.protoc_helper.proto_provider]
+ansys.api.platform.instancemanagement.v1 = ansys.api.platform.instancemanagement.v1

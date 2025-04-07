@@ -13,17 +13,17 @@ def process_result(result, simulation_id):
     # Сохраняем текстовый результат
     result_file_path = os.path.join(result_dir, 'result.txt')
     with open(result_file_path, 'w') as f:
-        f.write(f"Maximum displacement: {result.post_processing.nodal_displacement('NORM').max()}\n")
-        f.write(f"Maximum stress: {result.post_processing.nodal_eqv_stress().max()}\n")
+        f.write(f"Maximum displacement: {max(result.nodal_displacement(0))}\n")
+        f.write(f"Maximum stress: {result.nodal_eqv_stress().max()}\n")
         # Добавляем больше информации о результатах
-        f.write(f"Minimum displacement: {result.post_processing.nodal_displacement('NORM').min()}\n")
-        f.write(f"Average stress: {result.post_processing.nodal_eqv_stress().mean()}\n")
+        f.write(f"Minimum displacement: {min(result.nodal_displacement(0))}\n")
+        f.write(f"Average stress: {result.nodal_eqv_stress().mean()}\n")
         f.write(f"Total nodes: {len(result.mesh.nodes)}\n")
         f.write(f"Total elements: {len(result.mesh.elements)}\n")
 
     # Сохраняем изображение напряжений
     stress_image_path = os.path.join(result_dir, 'stress.png')
-    result.post_processing.plot_nodal_eqv_stress(
+    result.plot_nodal_eqv_stress(
         background='white',
         show_edges=True,
         show_displacement=True,
@@ -37,7 +37,7 @@ def process_result(result, simulation_id):
 
     # Сохраняем изображение с текстурами
     texture_image_path = os.path.join(result_dir, 'texture.png')
-    result.post_processing.plot_nodal_eqv_stress(
+    result.plot_nodal_eqv_stress(
         background='white',
         show_edges=True,
         show_displacement=True,
@@ -52,7 +52,7 @@ def process_result(result, simulation_id):
     # Сохраняем изображение температуры
     temp_image_path = os.path.join(result_dir, 'temperature.png')
     try:
-        result.post_processing.plot_nodal_temperature(
+        result.plot_nodal_temperature(
             background='white',
             show_edges=True,
             savefig=True,
@@ -62,7 +62,7 @@ def process_result(result, simulation_id):
         )
     except AttributeError:
         # Если метод plot_nodal_temperature не существует, используем другой метод
-        result.post_processing.plot_nodal_displacement(
+        result.plot_nodal_displacement(
             'NORM',
             background='white',
             show_edges=True,
@@ -98,12 +98,12 @@ def process_result(result, simulation_id):
 
     # Создаем сводку результатов с дополнительной информацией
     summary = {
-        'max_displacement': float(result.post_processing.nodal_displacement('NORM').max()),
-        'min_displacement': float(result.post_processing.nodal_displacement('NORM').min()),
-        'avg_displacement': float(result.post_processing.nodal_displacement('NORM').mean()),
-        'max_stress': float(result.post_processing.nodal_eqv_stress().max()),
-        'min_stress': float(result.post_processing.nodal_eqv_stress().min()),
-        'avg_stress': float(result.post_processing.nodal_eqv_stress().mean()),
+        'max_displacement': float(result.nodal_displacement(0).max()),
+        'min_displacement': float(result.nodal_displacement(0).min()),
+        'avg_displacement': float(result.nodal_displacement(0).mean()),
+        'max_stress': float(result.nodal_eqv_stress().max()),
+        'min_stress': float(result.nodal_eqv_stress().min()),
+        'avg_stress': float(result.nodal_eqv_stress().mean()),
         'node_count': len(result.mesh.nodes),
         'element_count': len(result.mesh.elements),
         'has_stress_model': stress_model_path is not None,

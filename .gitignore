@@ -1,0 +1,42 @@
+# General
+*.log
+*.env
+*.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+.bpvenv/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+
+# Node.js
+node_modules/
+
+# React
+build/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+
+# Coverage reports
+.coverage
+coverage/
+
+# Test output
+junit.xml
+
+# Miscellaneous
+*.bak
+*.tmp
+*.old

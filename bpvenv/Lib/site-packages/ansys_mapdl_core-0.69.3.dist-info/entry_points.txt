@@ -1,0 +1,4 @@
+[console_scripts]
+pymapdl=ansys.mapdl.core.cli:main
+pymapdl_convert_script=ansys.mapdl.core.cli:old_pymapdl_convert_script_entry_point
+

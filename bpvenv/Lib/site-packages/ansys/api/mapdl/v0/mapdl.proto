@@ -1,0 +1,237 @@
+syntax = "proto3";
+package ansys.api.mapdl.v0;
+option csharp_namespace =  "Ansys.Api.Mapdl.V0";
+
+import "ansys/api/mapdl/v0/ansys_kernel.proto";
+
+// ============================================================
+// For the cmd and inp Method
+
+message CmdRequest
+{
+  string			command = 1;
+  string			opt	= 2;
+}
+
+message CmdResponse
+{
+  string			response = 1;
+  int32				status = 2;
+  string			error_msg = 3;
+}
+
+message InputFileRequest
+{
+  string			filename       = 1;
+  string			opt            = 2;
+}
+
+message CmdOutput {
+  int32				msgtype	       = 1;
+  repeated string		cmdout         = 2;
+}
+
+// ============================================================
+// For the FctCall Method
+
+message FctArg {
+  kernel.v0.ValueType	type = 1;
+  repeated string	val  = 2;
+}
+
+message FctCallRequest {
+  string		fct_name    = 1;
+  repeated FctArg	args        = 2;
+  bool			returns_arg = 3;
+}
+message FctCallResponse{
+  FctArg		feedback = 1;
+}
+
+// ============================================================
+// For the GetNode(s) Method(s)
+
+message NodeRequest {
+  int32		num = 1;
+}
+
+message NodeResponse {
+  kernel.v0.Node		node = 1;
+}
+
+message setNodeRequest {
+  kernel.v0.Node		node = 1;
+}
+
+message setNodeResponse {
+  int32		num = 1;
+}
+
+// ============================================================
+// For the GetElement Method
+
+message ElementRequest {
+  int32		num = 1;
+}
+
+message Element {
+  int32			id = 1;
+  int32			mat = 2;
+  int32			type = 3;
+  int32			real = 4;
+  int32			sect = 5;
+  int32			cs = 6;
+  int32			node_count = 7;
+  repeated int32	nodes_ids = 8;
+}
+
+message ElementResponse {
+  Element	elm = 1;
+}
+
+message ElementType {
+  repeated int32	ielc = 1 [packed=true];
+}
+
+// ============================================================
+// For the Parameter/Variable Methods
+
+message ParameterRequest {
+  string		name   = 1;
+  bool			array  = 2;
+}
+
+message ParameterResponse {
+  repeated double	val = 1;
+  string		sval = 2;
+  int32			type = 3;
+}
+
+message VariableRequest {
+  int32			inum =1;
+}
+
+message VariableResponse {
+  repeated double	val = 1;
+}
+
+// ============================================================
+// For the Get Method
+
+message GetRequest {
+  string		getcmd = 1;
+};
+
+message GetResponse {
+  double		dval = 1;
+  string		sval = 2;
+  int32			type = 3;
+};
+
+enum DataType
+{
+  GEN	= 0;
+  VEC	= 1;
+  DMAT	= 2;
+  SMAT	= 3;
+};
+
+enum MatType
+{
+  UPPER = 0;		///< Upper part of the matrix
+  LOWER = 1;		///< Lower part of the matrix
+  DIAG  = 2;		///< Diagonal matrix
+  FULL  = 3;		///< No Symmetry : Both Sides are filled
+};
+
+message DataResponse
+{
+  kernel.v0.ValueType	stype    = 1;
+  DataType		objtype  = 2;
+  int32			size1    = 3;
+  int32			size2    = 4;
+  MatType		mattype  = 5;
+};
+
+message SetVecDataRequest {
+  string		vname	 = 1;
+  kernel.v0.ValueType	stype    = 2;
+  int32			size     = 3;
+  kernel.v0.Chunk	chunk	 = 4;
+};
+
+message SetMatDataRequest {
+  string		mname	 = 1;
+  kernel.v0.ValueType	stype    = 2;
+  int32			nrow     = 3;
+  int32			ncol     = 4;
+  kernel.v0.Chunk	chunk	 = 5;
+};
+
+// ============================================================
+// For the UploadFile/DownloadFile Methods
+
+message UploadFileRequest{
+  string		file_name = 1;
+  kernel.v0.Chunk	chunk = 2;
+};
+
+message UploadFileReply {
+  int32			length = 1;
+};
+
+message DownloadFileRequest {
+  string		name = 1;
+};
+
+
+// ============================================================
+// ===== API Definition
+
+service MapdlService{
+  
+  rpc SendCommand( CmdRequest)				returns ( CmdResponse);
+  rpc SendCommandS( CmdRequest)				returns ( stream CmdOutput);
+  
+  rpc InputFileLocal( stream CmdRequest)		returns ( stream kernel.v0.Chunk);
+  rpc InputFile(  InputFileRequest)			returns ( stream kernel.v0.Chunk);
+  rpc InputFileS( InputFileRequest)			returns ( stream CmdOutput);
+
+  rpc FctCall( FctCallRequest)				returns ( FctCallResponse);
+
+  rpc GetNodes( kernel.v0.EmptyRequest)			returns ( stream kernel.v0.Node);
+  rpc GetNode( NodeRequest)				returns ( NodeResponse);
+  rpc SetNode( setNodeRequest)				returns ( setNodeResponse);
+  rpc Nodes( kernel.v0.EmptyRequest)			returns (stream kernel.v0.Chunk);
+
+  rpc GetElements( kernel.v0.EmptyRequest)		returns ( stream Element);
+  rpc GetElement( ElementRequest)			returns ( ElementResponse);
+  rpc LoadElements( kernel.v0.EmptyRequest)		returns (stream kernel.v0.Chunk);
+
+  rpc GetElementType( ElementRequest)			returns ( ElementType);
+  rpc LoadElementTypeDescription(kernel.v0.EmptyRequest) returns (stream kernel.v0.Chunk);
+
+  rpc GetParameter( ParameterRequest)			returns ( ParameterResponse);
+  rpc GetVariable( VariableRequest)			returns ( VariableResponse);
+  rpc Get( GetRequest)					returns ( GetResponse);
+  rpc VGet( GetRequest)					returns ( VariableResponse);
+  rpc VGet2( GetRequest)				returns ( stream kernel.v0.Chunk);
+
+  rpc Ctrl( kernel.v0.CtrlRequest)			returns ( kernel.v0.CtrlResponse);
+
+  rpc GetVtkGeometry(kernel.v0.EmptyRequest)		returns (stream kernel.v0.Chunk);
+
+  // Methods to get APDLMath Data ( VEC / DMAT / SMAT)
+
+  rpc GetDataInfo( ParameterRequest)			returns ( DataResponse);
+  rpc GetVecData(  ParameterRequest)			returns ( stream kernel.v0.Chunk);
+  rpc GetMatData(  ParameterRequest)			returns ( stream kernel.v0.Chunk);
+
+  rpc SetVecData(  stream SetVecDataRequest)		returns ( kernel.v0.EmptyResponse);
+  rpc SetMatData(  stream SetMatDataRequest)		returns ( kernel.v0.EmptyResponse);
+
+  // Methods to Upload Download Files
+
+  rpc UploadFile  ( stream UploadFileRequest)		returns ( UploadFileReply);
+  rpc DownloadFile( DownloadFileRequest)		returns ( stream kernel.v0.Chunk);
+}

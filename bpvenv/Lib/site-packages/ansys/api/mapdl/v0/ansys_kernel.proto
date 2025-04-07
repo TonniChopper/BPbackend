@@ -1,0 +1,123 @@
+syntax = "proto3";
+package ansys.api.kernel.v0;
+option csharp_namespace =  "Ansys.Api.Kernel.V0";
+
+message EmptyRequest {}
+message EmptyResponse {}
+
+// ============================================================
+// For the Ctrl Method
+
+message CtrlRequest {
+  string		ctrl = 1;
+  string		opt1 = 2;  
+}
+
+message CtrlResponse {
+  string		response = 1;
+  int32			status = 2;
+}
+
+message StreamRequest
+{
+  int32 chunk_size = 1;
+  string rec_name = 2;
+}
+
+enum ValueType
+{
+  UNKNOWN = 0;
+  INTEGER = 1;
+  HYPER   = 2;
+  SHORT   = 3;
+  FLOAT   = 4;
+  DOUBLE  = 5;
+  FCPLX   = 6;
+  DCPLX   = 7;
+  CHAR    = 8;
+}
+
+message Chunk
+{
+  string	array_name = 1;
+  bytes		payload = 2;
+  ValueType	value_type = 3;
+  string	shape = 4;
+  int64		size = 5;
+}
+
+// message ChunkResponse {
+//   string name = 1;
+//   // bytes payload = 2;
+//   Chunk stream chunk = 2;
+//   int32 size = 3;
+//   enum ValueType{
+//     UNKNOWN = 0;
+//     INTEGER = 1;
+//     HYPER   = 2;
+//     SHORT   = 3;
+//     FLOAT   = 4;
+//     DOUBLE  = 5;
+//     FCPLX   = 6;
+//     DCPLX   = 7;
+//   }
+//   ValueType value_type = 4;
+  
+// }
+
+// message ArrayChunkResponse{
+//     repeated ChunkResponse array_chunk = 1;
+// }
+
+message Node
+{
+  int32		id = 1;
+  double	x = 2;
+  double	y = 3;
+  double	z = 4;
+  // repeated double coord = 2; ?? To save data for 2D models ??
+}
+
+message Matrix
+{
+  int32			nrow	 = 1;
+  int32			ncol	 = 2;
+  ValueType		vtype	 = 3;
+
+  enum	StorageOption {
+    DENSE =	0;
+    SYM =	1;
+    DIAG =	2;
+    CSR =	3;    
+  }
+
+  enum	SideOption {
+    UPPER =	0;
+    LOWER =	1;
+    FULL  =	2;
+  }
+
+  StorageOption		Storage  = 4;  
+  SideOption		side	 = 5;			
+}
+
+message DenseMatrix			// For DENSE / SYM or DIAG Matrices
+{
+  Matrix		mat	 = 1;
+  repeated double	values	 = 2;	// DENSE  : First Column1, then Column 2 ... size is nrow*ncol
+					// SYM    : Size is nrow*nrow+1)/2 ( Columnwize)
+					// DIAG   : Size is MIN( nrow, ncol)
+}
+
+message SparseMatrix
+{
+  Matrix		mat	 = 1;
+  int32			maxlen	 = 2;
+  int64			nval     = 3;
+  bool			sym	 = 4;
+ 
+  repeated int64	rows	 = 5;
+  repeated int32	colsIdx	 = 6;
+  repeated double	values	 = 7;	// For now only support double values. Will need to be generalized
+}
+

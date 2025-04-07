@@ -70,11 +70,15 @@ class MAPDLHandler:
             mapdl.sf('ALL', 'PRES', parameters.get('pressure', 1000))
             mapdl.nsel('ALL')
 
+            mapdl.finish()
+            mapdl.slashsolu()
+
             # Решение
             mapdl.solve()
 
             # Постобработка
             mapdl.post1()
+
             result = mapdl.result
 
             return result
