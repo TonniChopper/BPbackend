@@ -5,57 +5,84 @@ import matplotlib.pyplot as plt
 from django.conf import settings
 from django.core.files.base import ContentFile
 
-
 def process_result(result, simulation_id):
     """Обрабатывает результаты MAPDL и сохраняет их в файлы"""
     result_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_results', str(simulation_id))
     os.makedirs(result_dir, exist_ok=True)
 
     # Получаем смещения и вычисляем их нормы
-    displacements = np.array(result.nodal_displacement(0))
-    displacement_norms = np.linalg.norm(displacements, axis=1)
+    displacement_result = result.nodal_displacement(0)
+
+    # Используем простой список Python вместо массива NumPy
+    displacement_norms = []
+    for disp in displacement_result:
+        # Проверяем, что disp - это итерируемый объект (список или кортеж) и не NumPy массив
+        if hasattr(disp, '__iter__') and not isinstance(disp, np.ndarray):
+            norm = np.sqrt(sum(d * d for d in disp))
+        elif isinstance(disp, np.ndarray):
+            # Если disp - это NumPy массив, используем np.linalg.norm
+            norm = np.linalg.norm(disp)
+        else:
+            # Если disp - это скаляр, используем его напрямую
+            norm = abs(disp)
+        displacement_norms.append(norm)
+
+    # Преобразуем список в NumPy массив для более эффективных операций
+    displacement_norms_array = np.array(displacement_norms)
+
+    # Используем методы NumPy для вычисления статистики
+    max_displacement = displacement_norms_array.max()
+    min_displacement = displacement_norms_array.min()
+    avg_displacement = displacement_norms_array.mean()
+
+    # Получаем напряжения
+    nnum, stress = result.principal_nodal_stress(0)
+    von_mises = stress[:, -1]  # von-Mises stress is the right most column
 
     # Сохраняем текстовый результат
     result_file_path = os.path.join(result_dir, 'result.txt')
     with open(result_file_path, 'w') as f:
-        f.write(f"Maximum displacement: {displacement_norms.max()}\n")
-        f.write(f"Maximum stress: {result.nodal_eqv_stress().max()}\n")
-        # Добавляем больше информации о результатах
-        f.write(f"Minimum displacement: {displacement_norms.min()}\n")
-        f.write(f"Average displacement: {displacement_norms.mean()}\n")
-        f.write(f"Average stress: {result.nodal_eqv_stress().mean()}\n")
+        f.write(f"Maximum displacement: {max_displacement}\n")
+        f.write(f"Maximum stress: {von_mises.max()}\n")
+        f.write(f"Minimum displacement: {min_displacement}\n")
+        f.write(f"Average displacement: {avg_displacement}\n")
+        f.write(f"Average stress: {von_mises.mean()}\n")
         f.write(f"Total nodes: {len(result.mesh.nodes)}\n")
-        f.write(f"Total elements: {len(result.mesh.elements)}\n")
+        f.write(f"Total elements: {len(result.mesh.enum)}\n")  # Используем enum вместо elements
 
     # Сохраняем изображение напряжений
     stress_image_path = os.path.join(result_dir, 'stress.png')
-    result.plot_nodal_eqv_stress(
+    result.plot_principal_nodal_stress(
+         0,  # Используем '1' для первого главного напряжения
+        'S1',
         background='white',
         show_edges=True,
         show_displacement=True,
         savefig=True,
         filename=stress_image_path,
         cpos='iso',
-        window_size=[1920, 1080],
+        window_size=[1920,1080],
         text_color='black',
         add_text=True
     )
 
     # Сохраняем изображение с текстурами
     texture_image_path = os.path.join(result_dir, 'texture.png')
-    result.plot_nodal_eqv_stress(
+    result.plot_principal_nodal_stress(
+         1,  # Используем '2' для второго главного напряжения
+        'S2',
         background='white',
         show_edges=True,
         show_displacement=True,
         savefig=True,
         filename=texture_image_path,
         cpos='iso',
-        window_size=[1920, 1080],
+        window_size=[1920,1080],
         style='surface',
         show_axes=True
     )
 
-    # Сохраняем изображение температуры
+    # Сохраняем изображение температуры или эквивалентного напряжения
     temp_image_path = os.path.join(result_dir, 'temperature.png')
     try:
         result.plot_nodal_temperature(
@@ -64,19 +91,20 @@ def process_result(result, simulation_id):
             savefig=True,
             filename=temp_image_path,
             cpos='iso',
-            window_size=[1920, 1080]
+            window_size=[1920,1080]
         )
     except AttributeError:
-        # Если метод plot_nodal_temperature не существует, используем другой метод
-        result.plot_nodal_displacement(
-            'NORM',
+        # Используем третье главное напряжение вместо температуры
+        result.plot_principal_nodal_stress(
+            3,  # Используем '3' для третьего главного напряжения
+            'SEQV',
             background='white',
             show_edges=True,
             savefig=True,
             filename=temp_image_path,
             cpos='iso',
-            window_size=[1920, 1080],
-            scalar_bar_args={'title': 'Temperature Equivalent'}
+            window_size=[1920,1080],
+            scalar_bar_args={'title': 'Third Principal Stress'}
         )
 
     # Экспортируем 3D модели
@@ -104,14 +132,14 @@ def process_result(result, simulation_id):
 
     # Создаем сводку результатов с дополнительной информацией
     summary = {
-        'max_displacement': float(displacement_norms.max()),
-        'min_displacement': float(displacement_norms.min()),
-        'avg_displacement': float(displacement_norms.mean()),
-        'max_stress': float(result.nodal_eqv_stress().max()),
-        'min_stress': float(result.nodal_eqv_stress().min()),
-        'avg_stress': float(result.nodal_eqv_stress().mean()),
+        'max_displacement': float(max_displacement),
+        'min_displacement': float(min_displacement),
+        'avg_displacement': float(avg_displacement),
+        'max_stress': float(von_mises.max()),
+        'min_stress': float(von_mises.min()),
+        'avg_stress': float(von_mises.mean()),
         'node_count': len(result.mesh.nodes),
-        'element_count': len(result.mesh.elements),
+        'element_count': len(result.mesh.enum),  # Используем enum вместо elements
         'has_stress_model': stress_model_path is not None,
         'has_texture_model': texture_model_path is not None,
         'has_temp_model': temp_model_path is not None
@@ -131,4 +159,3 @@ def process_result(result, simulation_id):
         'temp_model': temp_model_path,
         'summary': summary
     }
-
