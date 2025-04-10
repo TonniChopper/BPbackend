@@ -52,35 +52,80 @@ def process_result(result, simulation_id):
 
     # Сохраняем изображение напряжений
     stress_image_path = os.path.join(result_dir, 'stress.png')
-    result.plot_principal_nodal_stress(
-         0,  # Используем '1' для первого главного напряжения
-        'S1',
-        background='white',
-        show_edges=True,
-        show_displacement=True,
-        savefig=True,
-        filename=stress_image_path,
-        cpos='iso',
-        window_size=[1920,1080],
-        text_color='black',
-        add_text=True
+    # result.plot_principal_nodal_stress(
+    #      0,  # Используем '1' для первого главного напряжения
+    #     'S1',
+    #     background='white',
+    #     show_edges=True,
+    #     show_displacement=True,
+    #     savefig=True,
+    #     filename=stress_image_path,
+    #     cpos='iso',
+    #     window_size=[1920,1080],
+    #     text_color='black',
+    #     add_text=True
+    # )
+    result.plot_nodal_solution(
+        0,  # Используем '1' для первого главного напряжения
+             'x',
+        label = 'Displacement',
+             background='white',
+             show_edges=True,
+             show_displacement=True,
+             # filename=stress_image_path,
+            screenshot=stress_image_path,
+             cpos='iso',
+             window_size=[1920,1080],
+             text_color='black',
+        add_text=True,
+        interactive = False,
     )
 
     # Сохраняем изображение с текстурами
     texture_image_path = os.path.join(result_dir, 'texture.png')
-    result.plot_principal_nodal_stress(
-         1,  # Используем '2' для второго главного напряжения
-        'S2',
+    result.plot_nodal_solution(
+        0,  # Используем '1' для первого главного напряжения
+        'y',
+        label='Displacement',
         background='white',
         show_edges=True,
         show_displacement=True,
-        savefig=True,
-        filename=texture_image_path,
+        # filename=stress_image_path,
+        screenshot=texture_image_path,
         cpos='iso',
-        window_size=[1920,1080],
-        style='surface',
-        show_axes=True
+        window_size=[1920, 1080],
+        text_color='black',
+        add_text=True,
+        interactive=False,
     )
+    stress_model_path = os.path.join(result_dir, 'stress_model.glb')
+    texture_model_path = os.path.join(result_dir, 'texture_model.glb')
+    try:
+        result.graphics.export_model(stress_model_path, 'glb')
+    except Exception as e:
+        stress_model_path = None
+        print(f"Failed to export stress 3D model: {e}")
+
+    try:
+        result.graphics.export_model(texture_model_path, 'glb')
+    except Exception as e:
+        texture_model_path = None
+        print(f"Failed to export texture 3D model: {e}")
+    # result.plot_principal_nodal_stress(
+    #      1,  # Используем '2' для второго главного напряжения
+    #     'S2',
+    #     background='white',
+    #     show_edges=True,
+    #     show_displacement=True,
+    #     # savefig=True,
+    #     # filename=texture_image_path,
+    #     screenshot=texture_image_path,
+    #     cpos='iso',
+    #     window_size=[1920,1080],
+    #     style='surface',
+    #     show_axes=True ,
+    #     interactive = False,
+    # )
 
     # Сохраняем изображение температуры или эквивалентного напряжения
     temp_image_path = os.path.join(result_dir, 'temperature.png')
@@ -88,10 +133,12 @@ def process_result(result, simulation_id):
         result.plot_nodal_temperature(
             background='white',
             show_edges=True,
-            savefig=True,
-            filename=temp_image_path,
+            # savefig=True,
+            # filename=temp_image_path,
+            screenshot=temp_image_path,
             cpos='iso',
-            window_size=[1920,1080]
+            window_size=[1920,1080],
+            interactive = False,
         )
     except AttributeError:
         # Используем третье главное напряжение вместо температуры

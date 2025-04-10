@@ -57,11 +57,11 @@ class SimulationService:
             simulation.status = 'FAILED'
             simulation.save()
             raise e
-        # finally:
-        #     # Закрываем соединение с MAPDL
-        #     if mapdl_handler:
-        #         mapdl_handler.close_mapdl()
-        #         logger.info("MAPDL session closed")
+        finally:
+            # Закрываем соединение с MAPDL
+            if mapdl_handler:
+                mapdl_handler.close_mapdl()
+                logger.info("MAPDL session closed")
 
 
 # import os
