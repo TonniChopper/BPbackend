@@ -94,7 +94,7 @@ def process_result(result, simulation_id):
             window_size=[1920,1080]
         )
     except AttributeError:
-        # Используем третье главное напряжение вместо температуры
+        # Используем третье главное напряжение вместо
         result.plot_principal_nodal_stress(
             3,  # Используем '3' для третьего главного напряжения
             'SEQV',
