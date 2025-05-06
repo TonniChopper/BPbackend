@@ -321,6 +321,9 @@
 import os
 import json
 import numpy as np
+import matplotlib
+
+matplotlib.use('Agg')  # Неинтерактивный бэкенд
 import matplotlib.pyplot as plt
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -330,13 +333,10 @@ from .image_capture import ImageCapture
 class ResultProcessor:
     """Класс для обработки результатов симуляции MAPDL"""
 
-    def __init__(self, temp_dir_model=None):
-        """Инициализация процессора результатов"""
-        self.temp_dir_model = temp_dir_model
-
-    def process_result(self, result, simulation_id):
+    @staticmethod
+    def process_result(result, simulation_id, parameters=None):
         """Обрабатывает результаты MAPDL и сохраняет их в файлы"""
-        # Создаем директорию для результатов
+        # Создаем директорию для результатов с корректным ID
         result_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_results', str(simulation_id))
         os.makedirs(result_dir, exist_ok=True)
 
@@ -380,28 +380,34 @@ class ResultProcessor:
             f.write(f"Total nodes: {len(result.mesh.nodes)}\n")
             f.write(f"Total elements: {len(result.mesh.enum)}\n")
 
-        # Создаем и сохраняем изображения для разных этапов
+        # Используем сохраненные изображения из mapdl_handler, если они есть
+        image_paths = getattr(result, '_image_paths', {})
+
         # 1. Геометрия
-        geometry_image_path = os.path.join(result_dir, 'geometry.png')
-        try:
-            if hasattr(result, '_mapdl'):
-                ImageCapture.capture_geometry(result._mapdl, geometry_image_path)
-            else:
+        geometry_image_path = image_paths.get('geometry_image')
+        if not geometry_image_path or not os.path.exists(geometry_image_path):
+            geometry_image_path = os.path.join(result_dir, 'geometry.png')
+            try:
+                if hasattr(result, '_mapdl'):
+                    ImageCapture.capture_geometry(result._mapdl, geometry_image_path)
+                else:
+                    geometry_image_path = None
+            except Exception as e:
+                print(f"Failed to create geometry image: {e}")
                 geometry_image_path = None
-        except Exception as e:
-            print(f"Failed to create geometry image: {e}")
-            geometry_image_path = None
 
         # 2. Сетка (mesh)
-        mesh_image_path = os.path.join(result_dir, 'mesh.png')
-        try:
-            if hasattr(result, '_mapdl'):
-                ImageCapture.capture_mesh(result._mapdl, mesh_image_path)
-            else:
+        mesh_image_path = image_paths.get('mesh_image')
+        if not mesh_image_path or not os.path.exists(mesh_image_path):
+            mesh_image_path = os.path.join(result_dir, 'mesh.png')
+            try:
+                if hasattr(result, '_mapdl'):
+                    ImageCapture.capture_mesh(result._mapdl, mesh_image_path)
+                else:
+                    mesh_image_path = None
+            except Exception as e:
+                print(f"Failed to create mesh image: {e}")
                 mesh_image_path = None
-        except Exception as e:
-            print(f"Failed to create mesh image: {e}")
-            mesh_image_path = None
 
         # 3. Напряжения (nodal stress)
         nodal_stress_image_path = os.path.join(result_dir, 'nodal_stress.png')
@@ -412,7 +418,7 @@ class ResultProcessor:
                 show_edges=True,
                 screenshot=nodal_stress_image_path,
                 cpos='iso',
-                window_size=[1920, 1080],
+                window_size=(1920, 1080),
                 off_screen=True
             )
         except Exception as e:
@@ -428,7 +434,7 @@ class ResultProcessor:
                 show_edges=True,
                 screenshot=displacement_image_path,
                 cpos='iso',
-                window_size=[1920, 1080],
+                window_size=(1920, 1080),
                 off_screen=True
             )
         except Exception as e:
@@ -483,10 +489,14 @@ class ResultProcessor:
         with open(os.path.join(result_dir, 'summary.json'), 'w') as f:
             json.dump(summary, f, indent=2)
 
+        # Результаты из этапов симуляции
+        results_image_path = image_paths.get('results_image')
+
         return {
             'result_file': result_file_path,
             'geometry_image': geometry_image_path,
             'mesh_image': mesh_image_path,
+            'results_image': results_image_path,
             'nodal_stress_image': nodal_stress_image_path,
             'displacement_image': displacement_image_path,
             'nodal_stress_model': nodal_stress_model_path,
@@ -494,5 +504,3 @@ class ResultProcessor:
             'displacement_model': displacement_model_path,
             'summary': summary
         }
-
-

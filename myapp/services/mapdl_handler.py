@@ -104,6 +104,9 @@
 from ansys.mapdl.core import launch_mapdl
 import os
 import logging
+import matplotlib
+
+matplotlib.use('Agg')  # Установка неинтерактивного бэкенда
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -134,7 +137,10 @@ class MAPDLHandler:
         """Запуск симуляции с сохранением изображений на каждом этапе"""
         try:
             mapdl = self.get_mapdl()
-            simulation_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_stages', str(parameters.get('id', 'temp')))
+
+            # Создаем директорию для этапов симуляции с корректным ID
+            simulation_id = parameters.get('id', 'temp')
+            simulation_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_stages', str(simulation_id))
             os.makedirs(simulation_dir, exist_ok=True)
 
             # Очистка предыдущей сессии
@@ -143,8 +149,8 @@ class MAPDLHandler:
 
             # Настройка параметров симуляции
             mapdl.et(1, 'SOLID186')
-            mapdl.mp('EX', 1, parameters.get('young_modulus', 2e11))
-            mapdl.mp('NUXY', 1, parameters.get('poisson_ratio', 0.27))
+            mapdl.mp('EX', 1, parameters.get('e', 2e11))  # Используем 'e' вместо 'young_modulus'
+            mapdl.mp('NUXY', 1, parameters.get('nu', 0.27))  # Используем 'nu' вместо 'poisson_ratio'
 
             # Создание геометрии
             length = parameters.get('length', 5)
@@ -199,10 +205,15 @@ class MAPDLHandler:
             results_image_path = os.path.join(simulation_dir, 'results.png')
             ImageCapture.capture_results(result, results_image_path)
 
-            # Сохраняем пути к изображениям в параметрах
-            parameters['geometry_image'] = geometry_image_path
-            parameters['mesh_image'] = mesh_image_path
-            parameters['results_image'] = results_image_path
+            # Сохраняем пути к изображениям в новом словаре, а не в исходных параметрах
+            image_paths = {
+                'geometry_image': geometry_image_path,
+                'mesh_image': mesh_image_path,
+                'results_image': results_image_path
+            }
+
+            # Добавляем информацию о путях к результату
+            result._image_paths = image_paths
 
             return result
 

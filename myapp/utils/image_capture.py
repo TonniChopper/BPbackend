@@ -1,13 +1,16 @@
 import os
 import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib
+
+matplotlib.use('Agg')  # Неинтерактивный бэкенд
+import matplotlib.pyplot as plt
 
 
 class ImageCapture:
     """Класс для создания и сохранения изображений на разных этапах симуляции"""
 
     @staticmethod
-    def capture_geometry(mapdl, save_path, window_size=[1920, 1080]):
+    def capture_geometry(mapdl, save_path, window_size=(1920, 1080)):
         """Захват изображения геометрии модели"""
         try:
             # Переключение в режим препроцессора для визуализации геометрии
@@ -31,7 +34,7 @@ class ImageCapture:
             return None
 
     @staticmethod
-    def capture_mesh(mapdl, save_path, window_size=[1920, 1080]):
+    def capture_mesh(mapdl, save_path, window_size=(1920, 1080)):
         """Захват изображения сетки модели"""
         try:
             # Создание и сохранение изображения
@@ -52,7 +55,7 @@ class ImageCapture:
             return None
 
     @staticmethod
-    def capture_results(result, save_path, result_type='displacement', window_size=[1920, 1080]):
+    def capture_results(result, save_path, result_type='displacement', window_size=(1920, 1080)):
         """Захват изображения результатов симуляции"""
         try:
             plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))

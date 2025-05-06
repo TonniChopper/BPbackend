@@ -146,14 +146,19 @@ class SimulationService:
         simulation.status = 'RUNNING'
         simulation.save()
 
+        # Добавляем ID в параметры
+        parameters = dict(simulation.parameters)
+        parameters['id'] = simulation_id
+
         mapdl_handler = None
         try:
-            logger.info(f"Starting simulation {simulation_id} with parameters: {simulation.parameters}")
+            logger.info(f"Starting simulation {simulation_id} with parameters: {parameters}")
 
             mapdl_handler = MAPDLHandler()
-            result = mapdl_handler.run_simulation(simulation.parameters)
+            result = mapdl_handler.run_simulation(parameters)
 
-            processed_result = ResultProcessor.process_result(result, simulation_id, simulation.parameters)
+            processor = ResultProcessor()
+            processed_result = processor.process_result(result, simulation_id)
 
             # Создаем или обновляем результат симуляции
             SimulationResult.objects.update_or_create(
@@ -189,5 +194,3 @@ class SimulationService:
             if mapdl_handler:
                 mapdl_handler.close_mapdl()
                 logger.info("MAPDL session closed")
-
-
