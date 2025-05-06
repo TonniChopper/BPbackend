@@ -30,10 +30,13 @@ class SimulationListCreateView(generics.ListCreateAPIView):
 
 class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = SimulationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Simulation.objects.filter(user=self.request.user)
+        if (self.request.user.is_authenticated):
+            return Simulation.objects.filter(user=self.request.user)
+        else:
+            return Simulation.objects.all()
 
 
 class SimulationResumeView(APIView):
@@ -54,7 +57,7 @@ class SimulationResumeView(APIView):
 
 
 class SimulationDownloadView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request, pk, file_type):
         try:
@@ -78,10 +81,6 @@ class SimulationDownloadView(APIView):
                     file_path = simulation.result.texture_image.path
                     filename = f'simulation_{pk}_texture.png'
                     content_type = 'image/png'
-                elif file_type == 'temp_image':
-                    file_path = simulation.result.temp_image.path
-                    filename = f'simulation_{pk}_temperature.png'
-                    content_type = 'image/png'
                 elif file_type == 'stress_model':
                     if not simulation.result.stress_model:
                         return Response({'detail': 'Stress 3D model not available.'}, status=status.HTTP_404_NOT_FOUND)
@@ -93,12 +92,6 @@ class SimulationDownloadView(APIView):
                         return Response({'detail': 'Texture 3D model not available.'}, status=status.HTTP_404_NOT_FOUND)
                     file_path = simulation.result.texture_model.path
                     filename = f'simulation_{pk}_texture_model.glb'
-                    content_type = 'model/gltf-binary'
-                elif file_type == 'temp_model':
-                    if not simulation.result.temp_model:
-                        return Response({'detail': 'Temperature 3D model not available.'}, status=status.HTTP_404_NOT_FOUND)
-                    file_path = simulation.result.temp_model.path
-                    filename = f'simulation_{pk}_temperature_model.glb'
                     content_type = 'model/gltf-binary'
                 elif file_type == 'summary':
                     file_path = simulation.result.summary.path
@@ -142,16 +135,13 @@ class SimulationStatusView(APIView):
                 data['result_summary'] = simulation.result.summary
                 data['has_stress_image'] = bool(simulation.result.stress_image)
                 data['has_texture_image'] = bool(simulation.result.texture_image)
-                data['has_temp_image'] = bool(simulation.result.temp_image)
                 data['has_stress_model'] = bool(simulation.result.stress_model)
                 data['has_texture_model'] = bool(simulation.result.texture_model)
-                data['has_temp_model'] = bool(simulation.result.temp_model)
                 data['stress_image_url'] = request.build_absolute_uri(
                     simulation.result.stress_image.url) if simulation.result.stress_image else None
                 data['texture_image_url'] = request.build_absolute_uri(
                     simulation.result.texture_image.url) if simulation.result.texture_image else None
-                data['temp_image_url'] = request.build_absolute_uri(
-                    simulation.result.temp_image.url) if simulation.result.temp_image else None
+
 
             return Response(data)
         except Simulation.DoesNotExist:
