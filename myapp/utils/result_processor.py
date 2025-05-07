@@ -390,7 +390,9 @@ class ResultProcessor:
             try:
                 if hasattr(result, '_mapdl'):
                     ImageCapture.capture_geometry(result._mapdl, geometry_image_path)
+                    print("Generated geometry image")
                 else:
+                    print("Failed geometry image")
                     geometry_image_path = None
             except Exception as e:
                 print(f"Failed to create geometry image: {e}")
@@ -403,43 +405,45 @@ class ResultProcessor:
             try:
                 if hasattr(result, '_mapdl'):
                     ImageCapture.capture_mesh(result._mapdl, mesh_image_path)
+                    print("Mesh image saved")
                 else:
+                    print("Failed to create mesh image")
                     mesh_image_path = None
             except Exception as e:
                 print(f"Failed to create mesh image: {e}")
                 mesh_image_path = None
 
-        # 3. Напряжения (nodal stress)
-        nodal_stress_image_path = os.path.join(result_dir, 'nodal_stress.png')
-        try:
-            result.plot_nodal_stress(
-                'SEQV',  # Эквивалентное напряжение по Мизесу
-                background='white',
-                show_edges=True,
-                screenshot=nodal_stress_image_path,
-                cpos='iso',
-                window_size=(1920, 1080),
-                off_screen=True
-            )
-        except Exception as e:
-            print(f"Failed to create nodal stress image: {e}")
-            nodal_stress_image_path = None
-
-        # 4. Смещения (displacement)
-        displacement_image_path = os.path.join(result_dir, 'displacement.png')
-        try:
-            result.plot_nodal_displacement(
-                'NORM',
-                background='white',
-                show_edges=True,
-                screenshot=displacement_image_path,
-                cpos='iso',
-                window_size=(1920, 1080),
-                off_screen=True
-            )
-        except Exception as e:
-            print(f"Failed to create displacement image: {e}")
-            displacement_image_path = None
+        # # 3. Напряжения (nodal stress)
+        # nodal_stress_image_path = os.path.join(result_dir, 'nodal_stress.png')
+        # try:
+        #     result.plot_nodal_stress(
+        #         'XY',
+        #         background='white',
+        #         show_edges=True,
+        #         screenshot=nodal_stress_image_path,
+        #         cpos='iso',
+        #         window_size=(1920, 1080),
+        #         off_screen=True
+        #     )
+        # except Exception as e:
+        #     print(f"Failed to create nodal stress image: {e}")
+        #     nodal_stress_image_path = None
+        #
+        # # 4. Смещения (displacement)
+        # displacement_image_path = os.path.join(result_dir, 'displacement.png')
+        # try:
+        #     result.plot_nodal_displacement(
+        #         'NORM',
+        #         background='white',
+        #         show_edges=True,
+        #         screenshot=displacement_image_path,
+        #         cpos='iso',
+        #         window_size=(1920, 1080),
+        #         off_screen=True
+        #     )
+        # except Exception as e:
+        #     print(f"Failed to create displacement image: {e}")
+        #     displacement_image_path = None
 
         # Экспортируем 3D модели
         nodal_stress_model_path = os.path.join(result_dir, 'nodal_stress_model.vtk')
@@ -478,8 +482,8 @@ class ResultProcessor:
             'element_count': len(result.mesh.enum),
             'has_geometry_image': geometry_image_path is not None,
             'has_mesh_image': mesh_image_path is not None,
-            'has_nodal_stress_image': nodal_stress_image_path is not None,
-            'has_displacement_image': displacement_image_path is not None,
+            # 'has_nodal_stress_image': nodal_stress_image_path is not None,
+            # 'has_displacement_image': displacement_image_path is not None,
             'has_nodal_stress_model': nodal_stress_model_path is not None,
             'has_mesh_model': mesh_model_path is not None,
             'has_displacement_model': displacement_model_path is not None
@@ -497,8 +501,8 @@ class ResultProcessor:
             'geometry_image': geometry_image_path,
             'mesh_image': mesh_image_path,
             'results_image': results_image_path,
-            'nodal_stress_image': nodal_stress_image_path,
-            'displacement_image': displacement_image_path,
+            # 'nodal_stress_image': nodal_stress_image_path,
+            # 'displacement_image': displacement_image_path,
             'nodal_stress_model': nodal_stress_model_path,
             'mesh_model': mesh_model_path,
             'displacement_model': displacement_model_path,

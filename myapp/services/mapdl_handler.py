@@ -140,7 +140,7 @@ class MAPDLHandler:
 
             # Создаем директорию для этапов симуляции с корректным ID
             simulation_id = parameters.get('id', 'temp')
-            simulation_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_stages', str(simulation_id))
+            simulation_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_results', str(simulation_id))
             os.makedirs(simulation_dir, exist_ok=True)
 
             # Очистка предыдущей сессии
