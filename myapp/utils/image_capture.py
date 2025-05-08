@@ -10,6 +10,28 @@ class ImageCapture:
     """Класс для создания и сохранения изображений на разных этапах симуляции"""
 
     @staticmethod
+    def save_simulation_images(mapdl, result, simulation_id, simulation_dir):
+        """Централизованный метод для сохранения всех типов изображений"""
+        images = {}
+
+        # Геометрия
+        geometry_path = os.path.join(simulation_dir, 'geometry.png')
+        if ImageCapture.capture_geometry(mapdl, geometry_path):
+            images['geometry_image'] = geometry_path
+
+        # Сетка
+        mesh_path = os.path.join(simulation_dir, 'mesh.png')
+        if ImageCapture.capture_mesh(mapdl, mesh_path):
+            images['mesh_image'] = mesh_path
+
+        # Результаты
+        results_path = os.path.join(simulation_dir, 'results.png')
+        if ImageCapture.capture_results(result, results_path):
+            images['results_image'] = results_path
+
+        return images
+
+    @staticmethod
     def capture_geometry(mapdl, save_path, window_size=[1920, 1080]):
         """Захват изображения геометрии модели"""
         try:
@@ -47,37 +69,11 @@ class ImageCapture:
     def capture_results(result, save_path, result_type='stress', window_size=[1920, 1080]):
         """Захват изображения результатов симуляции"""
         try:
-            #result.post1()
             plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))
-            #
-            # if result_type == 'displacement':
-            #     result.plot_nodal_displacement(
-            #         'NORM',
-            #         background='white',
-            #         show_edges=True,
-            #         screenshot=save_path,
-            #         cpos='iso',
-            #         window_size=[1920, 1080],
-            #         # window_size=window_size,
-            #         off_screen=True
-            #     )
-            # result_type == 'stress':
             result.plot_principal_nodal_stress(0, 'seqv', background='w', show_edges=True, text_color='k',
                                                    add_text=True,
                                                    window_size=[1920, 1080], screenshot=save_path,
                                                    off_screen=True)
-            result.save_as_vtk('triD2.vtk')
-            # elif result_type == 'strain':
-            #     result.plot_nodal_strain(
-            #         'EPTO',  # Полная деформация
-            #         background='white',
-            #         show_edges=True,
-            #         screenshot=save_path,
-            #         cpos='iso',
-            #         window_size=[1920, 1080],
-            #         # window_size=window_size,
-            #         off_screen=True
-            #     )
             plt.close()
             return save_path
         except Exception as e:

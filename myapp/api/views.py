@@ -1,4 +1,6 @@
 import os
+import json
+import tempfile
 from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -9,10 +11,17 @@ from myapp.models import Simulation
 from myapp.api.serializers import SimulationSerializer, SimulationResultSerializer, UserSerializer
 from myapp.tasks.simulation_task import run_simulation_task_with_redis
 from myapp.services.simulation_service import SimulationService
+from rest_framework.pagination import PageNumberPagination
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class SimulationListCreateView(generics.ListCreateAPIView):
     serializer_class = SimulationSerializer
     permission_classes = [AllowAny]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
@@ -20,10 +29,13 @@ class SimulationListCreateView(generics.ListCreateAPIView):
         return Simulation.objects.filter(user__isnull=True)
 
     def perform_create(self, serializer):
-        user = self.request.user if self.request.user.is_authenticated else None
-        simulation = serializer.save(user=user, status='PENDING')
-        # Запускаем асинхронную задачу вместо синхронного вызова
-        # run_simulation_task_with_redis.delay(simulation.id)
+        if self.request.user.is_authenticated:
+            simulation = serializer.save(user=self.request.user)
+        else:
+            simulation = serializer.save(user=None)
+            self.request.session['last_simulation_id'] = simulation.id
+            self.request.session.set_expiry(86400)
+
         SimulationService.run_simulation(simulation.id)
         return Response(SimulationSerializer(simulation).data, status=status.HTTP_201_CREATED)
 
@@ -33,10 +45,13 @@ class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        if (self.request.user.is_authenticated):
+        if self.request.user.is_authenticated:
             return Simulation.objects.filter(user=self.request.user)
         else:
-            return Simulation.objects.all()
+            session_simulation_id = self.request.session.get('last_simulation_id')
+            if session_simulation_id:
+                return Simulation.objects.filter(id=session_simulation_id, user__isnull=True)
+            return Simulation.objects.none()
 
 
 class SimulationResumeView(APIView):
@@ -73,40 +88,40 @@ class SimulationDownloadView(APIView):
                     file_path = simulation.result.result_file.path
                     filename = f'simulation_{pk}_result.txt'
                     content_type = 'text/plain'
-                elif file_type == 'stress_image':
-                    file_path = simulation.result.stress_image.path
-                    filename = f'simulation_{pk}_stress.png'
+                elif file_type == 'geometry':
+                    file_path = simulation.result.geometry_image.path
+                    filename = f'simulation_{pk}_geometry.png'
                     content_type = 'image/png'
-                elif file_type == 'texture_image':
-                    file_path = simulation.result.texture_image.path
-                    filename = f'simulation_{pk}_texture.png'
+                elif file_type == 'mesh':
+                    file_path = simulation.result.mesh_image.path
+                    filename = f'simulation_{pk}_mesh.png'
                     content_type = 'image/png'
-                elif file_type == 'stress_model':
-                    if not simulation.result.stress_model:
-                        return Response({'detail': 'Stress 3D model not available.'}, status=status.HTTP_404_NOT_FOUND)
-                    file_path = simulation.result.stress_model.path
-                    filename = f'simulation_{pk}_stress_model.glb'
-                    content_type = 'model/gltf-binary'
-                elif file_type == 'texture_model':
-                    if not simulation.result.texture_model:
-                        return Response({'detail': 'Texture 3D model not available.'}, status=status.HTTP_404_NOT_FOUND)
-                    file_path = simulation.result.texture_model.path
-                    filename = f'simulation_{pk}_texture_model.glb'
-                    content_type = 'model/gltf-binary'
+                elif file_type == 'results':
+                    file_path = simulation.result.results_image.path
+                    filename = f'simulation_{pk}_results.png'
+                    content_type = 'image/png'
                 elif file_type == 'summary':
-                    file_path = simulation.result.summary.path
+                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+                    with open(temp_file.name, 'w') as f:
+                        json.dump(simulation.result.summary, f, indent=2)
+
+                    file_path = temp_file.name
                     filename = f'simulation_{pk}_summary.json'
                     content_type = 'application/json'
                 else:
                     return Response({'detail': 'Invalid file type.'}, status=status.HTTP_400_BAD_REQUEST)
 
                 if os.path.exists(file_path):
-                    return FileResponse(
+                    response = FileResponse(
                         open(file_path, 'rb'),
                         as_attachment=True,
                         filename=filename,
                         content_type=content_type
                     )
+                    if file_type == 'summary':
+                        os.unlink(file_path)
+
+                    return response
                 else:
                     return Response({'detail': 'File not found on server.'}, status=status.HTTP_404_NOT_FOUND)
             except (AttributeError, ValueError) as e:
@@ -133,19 +148,51 @@ class SimulationStatusView(APIView):
 
             if simulation.status == 'COMPLETED' and hasattr(simulation, 'result'):
                 data['result_summary'] = simulation.result.summary
-                data['has_stress_image'] = bool(simulation.result.stress_image)
-                data['has_texture_image'] = bool(simulation.result.texture_image)
-                data['has_stress_model'] = bool(simulation.result.stress_model)
-                data['has_texture_model'] = bool(simulation.result.texture_model)
-                data['stress_image_url'] = request.build_absolute_uri(
-                    simulation.result.stress_image.url) if simulation.result.stress_image else None
-                data['texture_image_url'] = request.build_absolute_uri(
-                    simulation.result.texture_image.url) if simulation.result.texture_image else None
+                data['has_geometry_image'] = bool(simulation.result.geometry_image)
+                data['has_mesh_image'] = bool(simulation.result.mesh_image)
+                data['has_results_image'] = bool(simulation.result.results_image)
+                data['has_nodal_stress_image'] = bool(simulation.result.nodal_stress_image)
+                data['has_displacement_image'] = bool(simulation.result.displacement_image)
 
-
+                # Добавляем URL для всех изображений
+                if simulation.result.geometry_image:
+                    data['geometry_image_url'] = request.build_absolute_uri(
+                        simulation.result.geometry_image.url)
+                if simulation.result.mesh_image:
+                    data['mesh_image_url'] = request.build_absolute_uri(
+                        simulation.result.mesh_image.url)
+                if simulation.result.results_image:
+                    data['results_image_url'] = request.build_absolute_uri(
+                        simulation.result.results_image.url)
             return Response(data)
         except Simulation.DoesNotExist:
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+class CancelSimulationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, format=None):
+        try:
+            simulation = Simulation.objects.get(pk=pk, user=request.user)
+        except Simulation.DoesNotExist:
+            return Response({'detail': 'Симуляция не найдена.'},
+                          status=status.HTTP_404_NOT_FOUND)
+
+        # Проверяем, что симуляция в активном состоянии
+        if simulation.status not in ['PENDING', 'RUNNING']:
+            return Response({'detail': 'Можно отменить только запущенную или ожидающую симуляцию.'},
+                          status=status.HTTP_400_BAD_REQUEST)
+
+        # Обновляем статус
+        simulation.status = 'FAILED'
+        simulation.save()
+
+        # В реальном приложении здесь также нужно отменить задачу Celery
+        # from celery.task.control import revoke
+        # revoke(task_id, terminate=True)
+
+        return Response({'detail': 'Симуляция отменена.'}, status=status.HTTP_200_OK)
+
 class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]

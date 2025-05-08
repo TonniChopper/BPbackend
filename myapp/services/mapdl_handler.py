@@ -1,106 +1,3 @@
-# from ansys.mapdl.core import launch_mapdl
-# import os
-# import logging
-# from django.conf import settings
-#
-# logger = logging.getLogger(__name__)
-#
-#
-# class MAPDLHandler:
-#     _instance = None
-#     _mapdl = None
-#
-#     def __new__(cls):
-#         if cls._instance is None:
-#             cls._instance = super().__new__(cls)
-#         return cls._instance
-#
-#     def get_mapdl(self):
-#         if self._mapdl is None:
-#             try:
-#                 run_location = os.path.join(settings.MEDIA_ROOT, 'mapdl_runs')
-#                 os.makedirs(run_location, exist_ok=True)
-#                 self._mapdl = launch_mapdl(run_location=run_location)
-#                 logger.info("MAPDL session started successfully")
-#             except Exception as e:
-#                 logger.error(f"Failed to start MAPDL: {str(e)}")
-#                 raise
-#         return self._mapdl
-#
-#     def run_simulation(self, parameters):
-#         try:
-#             mapdl = self.get_mapdl()
-#
-#             # Очистка предыдущей сессии
-#             mapdl.clear()
-#             mapdl.prep7()
-#
-#             # Настройка параметров симуляции
-#             mapdl.et(1, 'SOLID186')  # Улучшенный тип элемента
-#             mapdl.mp('EX', 1, parameters.get('young_modulus', 2e11))
-#             mapdl.mp('NUXY', 1, parameters.get('poisson_ratio', 0.27))
-#
-#             # Создание геометрии
-#             length = parameters.get('length', 5)
-#             width = parameters.get('width', 2.5)
-#             depth = parameters.get('depth', 0.1)
-#             radius = parameters.get('radius', 0.5)
-#             num = parameters.get('num', 3)
-#
-#             mapdl.block(0, length, 0, width, 0, depth)
-#
-#             # Создание отверстий
-#             for i in range(1, num + 1):
-#                 mapdl.cyl4(i * length / (num + 1), width / 2, radius, '', '', '', depth)
-#
-#             # Выполняем булевы операции для создания отверстий
-#             mapdl.vsbv(1, 'ALL')
-#
-#             # Создание сетки с улучшенными параметрами
-#             element_size = parameters.get('element_size', length / 20)
-#             mapdl.esize(element_size)
-#             mapdl.mshape(1, "3D")  # Улучшение качества сетки
-#             mapdl.mshkey(0)  # Свободная сетка
-#             mapdl.vmesh('ALL')
-#
-#             # Применение граничных условий
-#             mapdl.nsel('S', 'LOC', 'X', 0)
-#             mapdl.d('ALL', 'ALL', 0)
-#             mapdl.nsel('S', 'LOC', 'X', length)
-#             mapdl.sf('ALL', 'PRES', parameters.get('pressure', 1000))
-#             mapdl.nsel('ALL')
-#
-#             mapdl.finish()
-#             mapdl.slashsolu()
-#
-#             # Решение
-#             mapdl.solve()
-#
-#             # Постобработка
-#             mapdl.post1()
-#
-#             #result = mapdl.result
-#             return mapdl
-#             #return result
-#
-#         except Exception as e:
-#             logger.error(f"MAPDL simulation failed: {str(e)}", exc_info=True)
-#             raise Exception(f"MAPDL simulation failed: {str(e)}")
-#
-#     def close_mapdl(self):
-#         if self._mapdl is not None:
-#             try:
-#                 self._mapdl.exit()
-#                 self._mapdl = None
-#                 logger.info("MAPDL session closed successfully")
-#             except Exception as e:
-#                 logger.error(f"Error closing MAPDL: {str(e)}")
-#
-#     def __del__(self):
-#         self.close_mapdl()
-#
-
-# #
 from ansys.mapdl.core import launch_mapdl
 import os
 import logging
@@ -119,6 +16,7 @@ class MAPDLHandler:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+
         return cls._instance
 
     def get_mapdl(self):
@@ -147,10 +45,10 @@ class MAPDLHandler:
             mapdl.clear()
             mapdl.prep7()
 
-            # Настройка параметров симуляции
+            # Настройка параметров
             mapdl.et(1, 'SOLID186')
-            mapdl.mp('EX', 1, parameters.get('e', 2e11))  # Используем 'e' вместо 'young_modulus'
-            mapdl.mp('NUXY', 1, parameters.get('nu', 0.27))  # Используем 'nu' вместо 'poisson_ratio'
+            mapdl.mp('EX', 1, parameters.get('e', 2e11))
+            mapdl.mp('NUXY', 1, parameters.get('nu', 0.27))
 
             # Создание геометрии
             length = parameters.get('length', 5)
@@ -160,18 +58,9 @@ class MAPDLHandler:
             num = parameters.get('num', 3)
 
             mapdl.block(0, length, 0, width, 0, depth)
-
-            # Создание отверстий
             for i in range(1, num + 1):
                 mapdl.cyl4(i * length / (num + 1), width / 2, radius, '', '', '', depth)
-
-            # Выполняем булевы операции для создания отверстий
             mapdl.vsbv(1, 'ALL')
-
-            # Сохранение изображения геометрии
-            geometry_image_path = os.path.join(simulation_dir, 'geometry.png')
-            from myapp.utils.image_capture import ImageCapture
-            ImageCapture.capture_geometry(mapdl, geometry_image_path)
 
             # Создание сетки
             element_size = parameters.get('element_size', length / 20)
@@ -180,11 +69,7 @@ class MAPDLHandler:
             mapdl.mshkey(0)
             mapdl.vmesh('ALL')
 
-            # Сохранение изображения сетки
-            mesh_image_path = os.path.join(simulation_dir, 'mesh.png')
-            ImageCapture.capture_mesh(mapdl, mesh_image_path)
-
-            # Применение граничных условий
+            # Граничные условия
             mapdl.nsel('S', 'LOC', 'X', 0)
             mapdl.d('ALL', 'ALL', 0)
             mapdl.nsel('S', 'LOC', 'X', length)
@@ -199,20 +84,13 @@ class MAPDLHandler:
 
             # Постобработка
             mapdl.post1()
-
-            # Сохранение изображения результатов
             result = mapdl.result
-            results_image_path = os.path.join(simulation_dir, 'results.png')
-            ImageCapture.capture_results(result, results_image_path)
 
-            # Сохраняем пути к изображениям в новом словаре, а не в исходных параметрах
-            image_paths = {
-                'geometry_image': geometry_image_path,
-                'mesh_image': mesh_image_path,
-                'results_image': results_image_path
-            }
+            # Сохраняем изображения централизованно
+            from myapp.utils.image_capture import ImageCapture
+            image_paths = ImageCapture.save_simulation_images(mapdl, result, simulation_id, simulation_dir)
 
-            # Добавляем информацию о путях к результату
+            # Добавляем информацию о путях
             result._image_paths = image_paths
 
             return result
