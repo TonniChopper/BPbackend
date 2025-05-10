@@ -61,19 +61,19 @@ class SimulationResumeView(APIView):
     def post(self, request, pk):
         try:
             simulation = Simulation.objects.get(pk=pk, user=request.user)
-            if simulation.status not in ['FAILED', 'COMPLETED']:
-                return Response({'detail': 'Simulation cannot be resumed.'}, status=status.HTTP_400_BAD_REQUEST)
+            # if simulation.status not in ['FAILED', 'COMPLETED']:
+            #     return Response({'detail': 'Simulation cannot be resumed.'}, status=status.HTTP_400_BAD_REQUEST)
             simulation.status = 'PENDING'
             simulation.save()
             # Запускаем асинхронную задачу вместо синхронного вызова
-            run_simulation_task_with_redis.delay(simulation.id)
+            SimulationService.run_simulation(simulation.id)
             return Response({'detail': 'Simulation resumed.'}, status=status.HTTP_200_OK)
         except Simulation.DoesNotExist:
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class SimulationDownloadView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, file_type):
         try:
