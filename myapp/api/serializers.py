@@ -25,8 +25,6 @@ class SimulationSerializer(serializers.ModelSerializer):
     result_summary = serializers.SerializerMethodField()
     geometry_image_url = serializers.SerializerMethodField()
     mesh_image_url = serializers.SerializerMethodField()
-    nodal_stress_image_url = serializers.SerializerMethodField()
-    displacement_image_url = serializers.SerializerMethodField()
     results_image_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -57,23 +55,6 @@ class SimulationSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.result.mesh_image.url)
             return obj.result.mesh_image.url
         return None
-
-    # def get_nodal_stress_image_url(self, obj):
-    #     if hasattr(obj, 'result') and obj.result.nodal_stress_image:
-    #         request = self.context.get('request')
-    #         if request:
-    #             return request.build_absolute_uri(obj.result.nodal_stress_image.url)
-    #         return obj.result.nodal_stress_image.url
-    #     return None
-
-    # def get_displacement_image_url(self, obj):
-    #     if hasattr(obj, 'result') and obj.result.displacement_image:
-    #         request = self.context.get('request')
-    #         if request:
-    #             return request.build_absolute_uri(obj.result.displacement_image.url)
-    #         return obj.result.displacement_image.url
-    #     return None
-    #
     def get_results_image_url(self, obj):
         if hasattr(obj, 'result') and obj.result.results_image:
             request = self.context.get('request')

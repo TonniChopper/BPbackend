@@ -49,12 +49,6 @@ class SimulationResult(models.Model):
     mesh_image = models.ImageField(upload_to='simulation_results/', null=True)
     results_image = models.ImageField(upload_to='simulation_results/', null=True)
 
-    # Существующие поля
-    nodal_stress_image = models.ImageField(upload_to='simulation_results/', null=True)
-    mesh_image2 = models.ImageField(upload_to='simulation_results/', null=True)
-    displacement_image = models.ImageField(upload_to='simulation_results/', null=True)
-
-
     summary = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
 

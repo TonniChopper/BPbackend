@@ -48,10 +48,11 @@ class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.user.is_authenticated:
             return Simulation.objects.filter(user=self.request.user)
         else:
-            session_simulation_id = self.request.session.get('last_simulation_id')
-            if session_simulation_id:
-                return Simulation.objects.filter(id=session_simulation_id, user__isnull=True)
-            return Simulation.objects.none()
+            # session_simulation_id = self.request.session.get('last_simulation_id')
+            # if session_simulation_id:
+            #     return Simulation.objects.filter(id=session_simulation_id, user__isnull=True)
+            # return Simulation.objects.none()
+            return Simulation.objects.filter(user=None)
 
 
 class SimulationResumeView(APIView):
