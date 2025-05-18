@@ -37,9 +37,9 @@ class SimulationService:
                 simulation=simulation,
                 defaults={
                     'result_file': processed_result['result_file'],
-                    'geometry_image': processed_result['geometry_image'],
                     'mesh_image': processed_result['mesh_image'],
-                    'results_image': processed_result['results_image'],
+                    'stress_image': processed_result['stress_image'],
+                    'deformation_image': processed_result['deformation_image'],
                     'summary': processed_result['summary']
                 }
             )

@@ -2,7 +2,9 @@ from ansys.mapdl.core import launch_mapdl
 import os
 import logging
 import matplotlib
+from django.utils.timezone import override
 
+from myapp.utils.image_capture import ImageCapture
 matplotlib.use('Agg')  # Установка неинтерактивного бэкенда
 from django.conf import settings
 
@@ -63,7 +65,7 @@ class MAPDLHandler:
             mapdl.vsbv(1, 'ALL')
 
             # Создание сетки
-            element_size = parameters.get('element_size', length / 20)
+            element_size = parameters.get('element_size', length / 40) #
             mapdl.esize(element_size)
             mapdl.mshape(1, "3D")
             mapdl.mshkey(0)
@@ -87,7 +89,7 @@ class MAPDLHandler:
             result = mapdl.result
 
             # Сохраняем изображения централизованно
-            from myapp.utils.image_capture import ImageCapture
+
             image_paths = ImageCapture.save_simulation_images(mapdl, result, simulation_id, simulation_dir)
 
             # Добавляем информацию о путях

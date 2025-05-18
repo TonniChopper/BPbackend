@@ -1,8 +1,6 @@
 import os
-import numpy as np
 import matplotlib
-
-matplotlib.use('Agg')  # Неинтерактивный бэкенд
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -14,20 +12,19 @@ class ImageCapture:
         """Централизованный метод для сохранения всех типов изображений"""
         images = {}
 
-        # Геометрия
-        geometry_path = os.path.join(simulation_dir, 'geometry.png')
-        if ImageCapture.capture_geometry(mapdl, geometry_path):
-            images['geometry_image'] = geometry_path
-
         # Сетка
         mesh_path = os.path.join(simulation_dir, 'mesh.png')
         if ImageCapture.capture_mesh(mapdl, mesh_path):
             images['mesh_image'] = mesh_path
 
         # Результаты
-        results_path = os.path.join(simulation_dir, 'results.png')
-        if ImageCapture.capture_results(result, results_path):
-            images['results_image'] = results_path
+        stress_path = os.path.join(simulation_dir, 'stress.png')
+        if ImageCapture.capture_stress(result, stress_path):
+            images['stress_image'] = stress_path
+
+        deformation_path = os.path.join(simulation_dir, 'deform.png')
+        if ImageCapture.capture_deformation(result, deformation_path):
+            images['deformation_image'] = deformation_path
 
         return images
 
@@ -40,7 +37,7 @@ class ImageCapture:
 
             # Создание и сохранение изображения
             plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))
-            mapdl.vplot(background='w', show_edges=True, smooth_shading=True,
+            mapdl.aplot(background='w', show_edges=True, smooth_shading=True,
                         window_size=[1920, 1080], savefig=save_path,
                         off_screen=True)
             plt.close()
@@ -66,14 +63,31 @@ class ImageCapture:
             return None
 
     @staticmethod
-    def capture_results(result, save_path, result_type='stress', window_size=[1920, 1080]):
-        """Захват изображения результатов симуляции"""
+    def capture_stress(result, save_path, result_type='stress', window_size=[1920, 1080]):
+        """Захват изображения результатов симуляции  """
         try:
             plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))
-            result.plot_principal_nodal_stress(0, 'seqv', background='w', show_edges=True, text_color='k',
+            result.plot_principal_nodal_stress(0, 'seqv', background='W', show_edges=True, text_color='k',
                                                    add_text=True,
                                                    window_size=[1920, 1080], screenshot=save_path,
                                                    off_screen=True)
+            plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))
+            plt.close()
+            return save_path
+        except Exception as e:
+            print(f"Ошибка при создании изображения stress: {e}")
+            return None
+
+    @staticmethod
+    def capture_deformation(mapdl, save_path, window_size=[1920, 1080]):
+        """Захват изображения результатов симуляции"""
+        try:
+            plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))
+            mapdl.plot_nodal_displacement(0, 'NORM', background='W', show_edges=True, text_color='k',
+                                               add_text=True,
+                                               window_size=[1920, 1080], screenshot=save_path,
+                                               off_screen=True)
+            plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))
             plt.close()
             return save_path
         except Exception as e:

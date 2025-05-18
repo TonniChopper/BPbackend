@@ -45,9 +45,9 @@ class SimulationResult(models.Model):
     result_file = models.FileField(upload_to='simulation_results/', null=True)
 
     # Изображения этапов
-    geometry_image = models.ImageField(upload_to='simulation_results/', null=True)
     mesh_image = models.ImageField(upload_to='simulation_results/', null=True)
-    results_image = models.ImageField(upload_to='simulation_results/', null=True)
+    stress_image = models.ImageField(upload_to='simulation_results/', null=True)
+    deformation_image = models.ImageField(upload_to='simulation_results/', null=True)
 
     summary = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)

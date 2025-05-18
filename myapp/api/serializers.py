@@ -23,14 +23,14 @@ class SimulationSerializer(serializers.ModelSerializer):
     status = serializers.CharField(read_only=True)
     has_result = serializers.SerializerMethodField()
     result_summary = serializers.SerializerMethodField()
-    geometry_image_url = serializers.SerializerMethodField()
     mesh_image_url = serializers.SerializerMethodField()
-    results_image_url = serializers.SerializerMethodField()
+    stress_image_url = serializers.SerializerMethodField()
+    deformation_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Simulation
         fields = ['id', 'user', 'parameters', 'status', 'created_at', 'completed_at',
-                  'has_result', 'result_summary', 'geometry_image_url', 'mesh_image_url', 'results_image_url']
+                  'has_result', 'result_summary', 'mesh_image_url', 'stress_image_url','deformation_image_url']
 
     def get_has_result(self, obj):
         return hasattr(obj, 'result')
@@ -40,14 +40,6 @@ class SimulationSerializer(serializers.ModelSerializer):
             return obj.result.summary
         return None
 
-    def get_geometry_image_url(self, obj):
-        if hasattr(obj, 'result') and obj.result.geometry_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.result.geometry_image.url)
-            return obj.result.geometry_image.url
-        return None
-
     def get_mesh_image_url(self, obj):
         if hasattr(obj, 'result') and obj.result.mesh_image:
             request = self.context.get('request')
@@ -55,20 +47,26 @@ class SimulationSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.result.mesh_image.url)
             return obj.result.mesh_image.url
         return None
-    def get_results_image_url(self, obj):
-        if hasattr(obj, 'result') and obj.result.results_image:
+    def get_stress_image_url(self, obj):
+        if hasattr(obj, 'result') and obj.result.stress_image:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.result.results_image.url)
-            return obj.result.results_image.url
+                return request.build_absolute_uri(obj.result.stress_image.url)
+            return obj.result.stress_image.url
+        return None
+    def get_deformation_image_url(self, obj):
+        if hasattr(obj, 'result') and obj.result.deformation_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.result.deformation_image.url)
+            return obj.result.deformation_image.url
         return None
 
 
 class SimulationResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = SimulationResult
-        fields = ['id', 'simulation', 'result_file',
-                 'geometry_image', 'mesh_image', 'results_image',
+        fields = ['id', 'simulation', 'result_file', 'mesh_image', 'stress_image','deformation_image',
                  'summary', 'created_at']
         read_only_fields = ['id', 'created_at']
 

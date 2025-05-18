@@ -77,9 +77,9 @@ class ResultProcessor:
             'avg_stress': safe_float(von_mises.mean()),
             'node_count': len(result.mesh.nodes),
             'element_count': len(result.mesh.enum),
-            'has_geometry_image': 'geometry_image' in image_paths,
             'has_mesh_image': 'mesh_image' in image_paths,
-            'has_results_image': 'results_image' in image_paths
+            'has_stress_image': 'stress_image' in image_paths,
+            'has_deformation_image': 'deformation_image' in image_paths,
         }
 
         # Сохраняем JSON-сводку
@@ -87,17 +87,17 @@ class ResultProcessor:
             json.dump(summary, f, indent=2)
 
         rel_result_file = os.path.relpath(result_file_path, settings.MEDIA_ROOT)
-        rel_geometry_image = os.path.relpath(image_paths.get('geometry_image', ''),
-                                             settings.MEDIA_ROOT) if 'geometry_image' in image_paths else None
         rel_mesh_image = os.path.relpath(image_paths.get('mesh_image', ''),
                                          settings.MEDIA_ROOT) if 'mesh_image' in image_paths else None
-        rel_results_image = os.path.relpath(image_paths.get('results_image', ''),
-                                            settings.MEDIA_ROOT) if 'results_image' in image_paths else None
+        rel_stress_image = os.path.relpath(image_paths.get('stress_image', ''),
+                                            settings.MEDIA_ROOT) if 'stress_image' in image_paths else None
+        rel_deformation_image = os.path.relpath(image_paths.get('deformation_image', ''),
+                                            settings.MEDIA_ROOT) if 'deformation_image' in image_paths else None
 
         return {
             'result_file': rel_result_file,
-            'geometry_image': rel_geometry_image,
             'mesh_image': rel_mesh_image,
-            'results_image': rel_results_image,
+            'stress_image': rel_stress_image,
+            'deformation_image' : rel_deformation_image,
             'summary': summary
         }
