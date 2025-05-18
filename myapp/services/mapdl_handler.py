@@ -3,7 +3,7 @@ import os
 import logging
 import matplotlib
 
-matplotlib.use('Agg')  # Установка неинтерактивного бэкенда
+matplotlib.use('Agg')  #Set non-interactive backend
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -32,25 +32,21 @@ class MAPDLHandler:
         return self._mapdl
 
     def run_simulation(self, parameters):
-        """Запуск симуляции с сохранением изображений на каждом этапе"""
+        """runs the simulation with given parameters"""
         try:
             mapdl = self.get_mapdl()
 
-            # Создаем директорию для этапов симуляции с корректным ID
             simulation_id = parameters.get('id', 'temp')
             simulation_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_results', str(simulation_id))
             os.makedirs(simulation_dir, exist_ok=True)
 
-            # Очистка предыдущей сессии
             mapdl.clear()
             mapdl.prep7()
 
-            # Настройка параметров
             mapdl.et(1, 'SOLID186')
             mapdl.mp('EX', 1, parameters.get('e', 2e11))
             mapdl.mp('NUXY', 1, parameters.get('nu', 0.27))
 
-            # Создание геометрии
             length = parameters.get('length', 5)
             width = parameters.get('width', 2.5)
             depth = parameters.get('depth', 0.1)
@@ -62,14 +58,12 @@ class MAPDLHandler:
                 mapdl.cyl4(i * length / (num + 1), width / 2, radius, '', '', '', depth)
             mapdl.vsbv(1, 'ALL')
 
-            # Создание сетки
             element_size = parameters.get('element_size', length / 20)
             mapdl.esize(element_size)
             mapdl.mshape(1, "3D")
             mapdl.mshkey(0)
             mapdl.vmesh('ALL')
 
-            # Граничные условия
             mapdl.nsel('S', 'LOC', 'X', 0)
             mapdl.d('ALL', 'ALL', 0)
             mapdl.nsel('S', 'LOC', 'X', length)
@@ -79,18 +73,14 @@ class MAPDLHandler:
             mapdl.finish()
             mapdl.slashsolu()
 
-            # Решение
             mapdl.solve()
 
-            # Постобработка
             mapdl.post1()
             result = mapdl.result
 
-            # Сохраняем изображения централизованно
             from myapp.utils.image_capture import ImageCapture
             image_paths = ImageCapture.save_simulation_images(mapdl, result, simulation_id, simulation_dir)
 
-            # Добавляем информацию о путях
             result._image_paths = image_paths
 
             return result

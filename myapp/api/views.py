@@ -25,19 +25,18 @@ class SimulationListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return self.request.user.simulations.all()
+            return self.request.user.simulations.filter(user=self.request.user)
         return Simulation.objects.filter(user__isnull=True)
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             simulation = serializer.save(user=self.request.user)
         else:
-            simulation = serializer.save(user=None)
+            simulation = serializer.save(user=None, status='PENDING')
             self.request.session['last_simulation_id'] = simulation.id
             self.request.session.set_expiry(86400)
 
         SimulationService.run_simulation(simulation.id)
-        return Response(SimulationSerializer(simulation).data, status=status.HTTP_201_CREATED)
 
 
 class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -48,11 +47,10 @@ class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.user.is_authenticated:
             return Simulation.objects.filter(user=self.request.user)
         else:
-            # session_simulation_id = self.request.session.get('last_simulation_id')
-            # if session_simulation_id:
-            #     return Simulation.objects.filter(id=session_simulation_id, user__isnull=True)
-            # return Simulation.objects.none()
-            return Simulation.objects.filter(user=None)
+            session_simulation_id = self.request.session.get('last_simulation_id')
+            if session_simulation_id:
+                return Simulation.objects.filter(id=session_simulation_id, user__isnull=True)
+            return Simulation.objects.none()
 
 
 class SimulationResumeView(APIView):
@@ -65,7 +63,6 @@ class SimulationResumeView(APIView):
                 return Response({'detail': 'Simulation cannot be resumed.'}, status=status.HTTP_400_BAD_REQUEST)
             simulation.status = 'PENDING'
             simulation.save()
-            # Запускаем асинхронную задачу вместо синхронного вызова
             run_simulation_task_with_redis.delay(simulation.id)
             return Response({'detail': 'Simulation resumed.'}, status=status.HTTP_200_OK)
         except Simulation.DoesNotExist:
@@ -73,11 +70,19 @@ class SimulationResumeView(APIView):
 
 
 class SimulationDownloadView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, file_type):
         try:
-            simulation = Simulation.objects.get(pk=pk, user=request.user)
+            if request.user.is_authenticated:
+                simulation = Simulation.objects.get(pk=pk, user=request.user)
+            else:
+                session_simulation_id = request.session.get('last_simulation_id')
+                if session_simulation_id and str(pk) == str(session_simulation_id):
+                    simulation = Simulation.objects.get(pk=pk, user__isnull=True)
+                else:
+                    return Response({'detail': 'Доступ запрещен.'},
+                                    status=status.HTTP_403_FORBIDDEN)
             if simulation.status != 'COMPLETED':
                 return Response({'detail': 'Simulation results not ready.'}, status=status.HTTP_400_BAD_REQUEST)
 
