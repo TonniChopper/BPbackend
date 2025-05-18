@@ -25,7 +25,7 @@ class SimulationListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return self.request.user.simulations.filter(user=self.request.user)
+            return self.request.user.simulations.all()
         return Simulation.objects.filter(user__isnull=True)
 
     def perform_create(self, serializer):
@@ -59,11 +59,12 @@ class SimulationResumeView(APIView):
     def post(self, request, pk):
         try:
             simulation = Simulation.objects.get(pk=pk, user=request.user)
-            if simulation.status not in ['FAILED', 'COMPLETED']:
-                return Response({'detail': 'Simulation cannot be resumed.'}, status=status.HTTP_400_BAD_REQUEST)
+            # if simulation.status not in ['FAILED', 'COMPLETED']:
+            #     return Response({'detail': 'Simulation cannot be resumed.'}, status=status.HTTP_400_BAD_REQUEST)
             simulation.status = 'PENDING'
             simulation.save()
-            run_simulation_task_with_redis.delay(simulation.id)
+            # Запускаем асинхронную задачу вместо синхронного вызова
+            SimulationService.run_simulation(simulation.id)
             return Response({'detail': 'Simulation resumed.'}, status=status.HTTP_200_OK)
         except Simulation.DoesNotExist:
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -94,17 +95,17 @@ class SimulationDownloadView(APIView):
                     file_path = simulation.result.result_file.path
                     filename = f'simulation_{pk}_result.txt'
                     content_type = 'text/plain'
-                elif file_type == 'geometry':
-                    file_path = simulation.result.geometry_image.path
-                    filename = f'simulation_{pk}_geometry.png'
-                    content_type = 'image/png'
                 elif file_type == 'mesh':
                     file_path = simulation.result.mesh_image.path
                     filename = f'simulation_{pk}_mesh.png'
                     content_type = 'image/png'
-                elif file_type == 'results':
-                    file_path = simulation.result.results_image.path
-                    filename = f'simulation_{pk}_results.png'
+                elif file_type == 'stress':
+                    file_path = simulation.result.stress_image.path
+                    filename = f'simulation_{pk}_stress.png'
+                    content_type = 'image/png'
+                elif file_type == 'deformation':
+                    file_path = simulation.result.deformation_image.path
+                    filename = f'simulation_{pk}_deform.png'
                     content_type = 'image/png'
                 elif file_type == 'summary':
                     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
@@ -154,22 +155,20 @@ class SimulationStatusView(APIView):
 
             if simulation.status == 'COMPLETED' and hasattr(simulation, 'result'):
                 data['result_summary'] = simulation.result.summary
-                data['has_geometry_image'] = bool(simulation.result.geometry_image)
                 data['has_mesh_image'] = bool(simulation.result.mesh_image)
-                data['has_results_image'] = bool(simulation.result.results_image)
-                data['has_nodal_stress_image'] = bool(simulation.result.nodal_stress_image)
-                data['has_displacement_image'] = bool(simulation.result.displacement_image)
+                data['has_stress_image'] = bool(simulation.result.stress_image)
+                data['has_nodal_stress_image'] = bool(simulation.result.deformation_image)
 
                 # Добавляем URL для всех изображений
-                if simulation.result.geometry_image:
-                    data['geometry_image_url'] = request.build_absolute_uri(
-                        simulation.result.geometry_image.url)
                 if simulation.result.mesh_image:
                     data['mesh_image_url'] = request.build_absolute_uri(
                         simulation.result.mesh_image.url)
-                if simulation.result.results_image:
-                    data['results_image_url'] = request.build_absolute_uri(
-                        simulation.result.results_image.url)
+                if simulation.result.stress_image:
+                    data['stress_image_url'] = request.build_absolute_uri(
+                        simulation.result.stress_image.url)
+                if simulation.result.deformation_image:
+                    data['deformation_image_url'] = request.build_absolute_uri(
+                        simulation.result.deformation_image.url)
             return Response(data)
         except Simulation.DoesNotExist:
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)

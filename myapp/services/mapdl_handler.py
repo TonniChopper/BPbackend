@@ -2,8 +2,11 @@ from ansys.mapdl.core import launch_mapdl
 import os
 import logging
 import matplotlib
+from django.utils.timezone import override
 
-matplotlib.use('Agg')  #Set non-interactive backend
+
+from myapp.utils.image_capture import ImageCapture
+matplotlib.use('Agg')  # Установка неинтерактивного бэкенда
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -58,7 +61,7 @@ class MAPDLHandler:
                 mapdl.cyl4(i * length / (num + 1), width / 2, radius, '', '', '', depth)
             mapdl.vsbv(1, 'ALL')
 
-            element_size = parameters.get('element_size', length / 20)
+            element_size = parameters.get('element_size', length / 40) #
             mapdl.esize(element_size)
             mapdl.mshape(1, "3D")
             mapdl.mshkey(0)
@@ -78,7 +81,6 @@ class MAPDLHandler:
             mapdl.post1()
             result = mapdl.result
 
-            from myapp.utils.image_capture import ImageCapture
             image_paths = ImageCapture.save_simulation_images(mapdl, result, simulation_id, simulation_dir)
 
             result._image_paths = image_paths
