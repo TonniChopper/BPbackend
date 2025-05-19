@@ -82,7 +82,7 @@ class SimulationDownloadView(APIView):
                 if session_simulation_id and str(pk) == str(session_simulation_id):
                     simulation = Simulation.objects.get(pk=pk, user__isnull=True)
                 else:
-                    return Response({'detail': 'Доступ запрещен.'},
+                    return Response({'detail': 'Access denied'},
                                     status=status.HTTP_403_FORBIDDEN)
             if simulation.status != 'COMPLETED':
                 return Response({'detail': 'Simulation results not ready.'}, status=status.HTTP_400_BAD_REQUEST)
