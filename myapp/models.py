@@ -12,7 +12,7 @@ class Simulation(models.Model):
         ('COMPLETED', 'Completed'),
         ('FAILED', 'Failed')
     ]
-
+    title = models.CharField(max_length=255, null=True, blank=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

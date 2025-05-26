@@ -128,6 +128,8 @@ class SimulationDownloadView(APIView):
                     if file_type == 'summary':
                         os.unlink(file_path)
 
+                    response = FileResponse(open(image.path, 'rb'), content_type=content_type)
+                    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(image.path)}"'
                     return response
                 else:
                     return Response({'detail': 'File not found on server.'}, status=status.HTTP_404_NOT_FOUND)
@@ -139,6 +141,26 @@ class SimulationDownloadView(APIView):
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
+class DeleteSimulationView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Simulation.objects.filter(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        if hasattr(instance, 'result'):
+            if instance.result.mesh_image:
+                if os.path.exists(instance.result.mesh_image.path):
+                    os.remove(instance.result.mesh_image.path)
+            if instance.result.stress_image:
+                if os.path.exists(instance.result.stress_image.path):
+                    os.remove(instance.result.stress_image.path)
+            if instance.result.deformation_image:
+                if os.path.exists(instance.result.deformation_image.path):
+                    os.remove(instance.result.deformation_image.path)
+            instance.result.delete()
+        instance.delete()
+
 class SimulationStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -147,6 +169,7 @@ class SimulationStatusView(APIView):
             simulation = Simulation.objects.get(pk=pk, user=request.user)
             data = {
                 'id': simulation.id,
+                'title': simulation.title,
                 'status': simulation.status,
                 'created_at': simulation.created_at,
                 'completed_at': simulation.completed_at,

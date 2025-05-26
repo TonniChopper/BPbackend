@@ -29,7 +29,7 @@ class SimulationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Simulation
-        fields = ['id', 'user', 'parameters', 'status', 'created_at', 'completed_at',
+        fields = ['id', 'title', 'user', 'parameters', 'status', 'created_at', 'completed_at',
                   'has_result', 'result_summary', 'mesh_image_url', 'stress_image_url','deformation_image_url']
 
     def get_has_result(self, obj):
