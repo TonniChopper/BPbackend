@@ -74,6 +74,7 @@ class SimulationDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, file_type):
+        global file
         try:
             if request.user.is_authenticated:
                 simulation = Simulation.objects.get(pk=pk, user=request.user)
@@ -96,15 +97,15 @@ class SimulationDownloadView(APIView):
                     filename = f'simulation_{pk}_result.txt'
                     content_type = 'text/plain'
                 elif file_type == 'mesh':
-                    file_path = simulation.result.mesh_image.path
+                    file = simulation.result.mesh_image
                     filename = f'simulation_{pk}_mesh.png'
                     content_type = 'image/png'
                 elif file_type == 'stress':
-                    file_path = simulation.result.stress_image.path
+                    file = simulation.result.stress_image
                     filename = f'simulation_{pk}_stress.png'
                     content_type = 'image/png'
                 elif file_type == 'deformation':
-                    file_path = simulation.result.deformation_image.path
+                    file = simulation.result.deformation_image
                     filename = f'simulation_{pk}_deform.png'
                     content_type = 'image/png'
                 elif file_type == 'summary':
@@ -118,18 +119,17 @@ class SimulationDownloadView(APIView):
                 else:
                     return Response({'detail': 'Invalid file type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                if os.path.exists(file_path):
+                if os.path.exists(file.path):
                     response = FileResponse(
-                        open(file_path, 'rb'),
+                        open(file.path, 'rb'),
                         as_attachment=True,
                         filename=filename,
                         content_type=content_type
                     )
                     if file_type == 'summary':
-                        os.unlink(file_path)
+                        os.unlink(file.path)
 
-                    response = FileResponse(open(image.path, 'rb'), content_type=content_type)
-                    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(image.path)}"'
+                    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file.path)}"'
                     return response
                 else:
                     return Response({'detail': 'File not found on server.'}, status=status.HTTP_404_NOT_FOUND)
