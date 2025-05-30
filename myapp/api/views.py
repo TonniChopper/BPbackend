@@ -39,6 +39,34 @@ class SimulationListCreateView(generics.ListCreateAPIView):
         # SimulationService.run_simulation(simulation.id)
         SimulationService.queue_simulation(simulation.id)
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+
+        # Add task_id and status to the response
+        response_data = serializer.data
+        simulation_id = response_data['id']
+        task_id = None
+
+        # Get task_id from Redis
+        try:
+            redis_client = Redis.from_url(settings.CELERY_BROKER_URL)
+            task_id = redis_client.get(f"simulation_task_id:{simulation_id}")
+            if task_id:
+                task_id = task_id.decode('utf-8')
+        except Exception as e:
+            logger.error(f"Error getting task_id: {e}")
+
+        response_data.update({
+            'task_id': task_id,
+            'status': 'PENDING',
+            'message': 'Simulation queued successfully'
+        })
+
+        return Response(response_data, status=status.HTTP_202_ACCEPTED, headers=headers)
+
 
 class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = SimulationSerializer
@@ -172,7 +200,16 @@ class SimulationStatusView(APIView):
 
     def get(self, request, pk):
         try:
-            simulation = Simulation.objects.get(pk=pk, user=request.user)
+            if request.user.is_authenticated:
+                simulation = Simulation.objects.get(pk=pk, user=request.user)
+            else:
+                session_simulation_id = request.session.get('last_simulation_id')
+                if session_simulation_id and str(pk) == str(session_simulation_id):
+                    simulation = Simulation.objects.get(pk=pk, user__isnull=True)
+                else:
+                    return Response({'detail': 'Access denied'},
+                                    status=status.HTTP_403_FORBIDDEN)
+
             data = {
                 'id': simulation.id,
                 'title': simulation.title,
@@ -183,12 +220,12 @@ class SimulationStatusView(APIView):
             }
 
             if simulation.status == 'COMPLETED' and hasattr(simulation, 'result'):
+                # Add result information to the response
                 data['result_summary'] = simulation.result.summary
                 data['has_mesh_image'] = bool(simulation.result.mesh_image)
                 data['has_stress_image'] = bool(simulation.result.stress_image)
-                data['has_nodal_stress_image'] = bool(simulation.result.deformation_image)
+                data['has_deformation_image'] = bool(simulation.result.deformation_image)
 
-                # Добавляем URL для всех изображений
                 if simulation.result.mesh_image:
                     data['mesh_image_url'] = request.build_absolute_uri(
                         simulation.result.mesh_image.url)
