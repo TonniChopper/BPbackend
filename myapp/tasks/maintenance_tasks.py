@@ -5,6 +5,7 @@ from datetime import timedelta
 from ..models import Simulation
 from ..services.simulation_cache_service import SimulationCacheService
 from redis import Redis
+import json
 from django.conf import settings
 
 logger = logging.getLogger(__name__)

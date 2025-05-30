@@ -11,7 +11,7 @@ __pycache__/
 
 # Virtual Environment
 venv/
-.bpvenv/
+bpvenv/
 
 # Django
 *.sqlite3

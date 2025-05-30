@@ -36,7 +36,8 @@ class SimulationListCreateView(generics.ListCreateAPIView):
             self.request.session['last_simulation_id'] = simulation.id
             self.request.session.set_expiry(86400)
 
-        SimulationService.run_simulation(simulation.id)
+        # SimulationService.run_simulation(simulation.id)
+        SimulationService.queue_simulation(simulation.id)
 
 
 class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):

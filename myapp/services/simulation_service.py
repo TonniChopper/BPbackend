@@ -11,6 +11,24 @@ logger = logging.getLogger(__name__)
 
 class SimulationService:
     @staticmethod
+    def queue_simulation(simulation_id):
+        """Queue a simulation using Celery"""
+        # Import the task inside the method to avoid circular imports
+        from ..tasks.simulation_task import run_simulation_task_with_redis
+
+        # Directly dispatch the task
+        task = run_simulation_task_with_redis.delay(simulation_id)
+
+        # Store the task ID in Redis for later use (like cancellation)
+        from redis import Redis
+        from django.conf import settings
+
+        redis_client = Redis.from_url(settings.CELERY_BROKER_URL)
+        redis_client.set(f"simulation_task_id:{simulation_id}", task.id, ex=86400)  # 24 hours expiry
+
+        return task.id
+
+    @staticmethod
     @transaction.atomic
     def run_simulation(simulation_id):
         """Запускает симуляцию и сохраняет результаты"""
@@ -61,3 +79,33 @@ class SimulationService:
             if mapdl_handler:
                 mapdl_handler.close_mapdl()
                 logger.info("MAPDL session closed")
+
+    @staticmethod
+    def copy_simulation_result(source_id, target_id):
+        """Copy simulation result from one simulation to another"""
+        source = Simulation.objects.get(id=source_id)
+        target = Simulation.objects.get(id=target_id)
+
+        if not hasattr(source, 'result'):
+            raise ValueError(f"Source simulation {source_id} has no results")
+
+        source_result = source.result
+
+        # Create new result for target simulation
+        SimulationResult.objects.update_or_create(
+            simulation=target,
+            defaults={
+                'result_file': source_result.result_file,
+                'mesh_image': source_result.mesh_image,
+                'stress_image': source_result.stress_image,
+                'deformation_image': source_result.deformation_image,
+                'summary': source_result.summary
+            }
+        )
+
+        target.status = 'COMPLETED'
+        target.completed_at = timezone.now()
+        target.save()
+
+        logger.info(f"Copied simulation result from {source_id} to {target_id}")
+        return target.result
