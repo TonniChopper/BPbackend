@@ -37,7 +37,7 @@ class SimulationListCreateView(generics.ListCreateAPIView):
             self.request.session.set_expiry(86400)
 
         # SimulationService.run_simulation(simulation.id)
-        SimulationService.queue_simulation(simulation.id)
+        task_id = SimulationService.queue_simulation(simulation.id)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -98,7 +98,7 @@ class SimulationResumeView(APIView):
             simulation.status = 'PENDING'
             simulation.save()
             # Запускаем асинхронную задачу вместо синхронного вызова
-            SimulationService.run_simulation(simulation.id)
+            SimulationService.queue_simulation(simulation.id)
             return Response({'detail': 'Simulation resumed.'}, status=status.HTTP_200_OK)
         except Simulation.DoesNotExist:
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -196,7 +196,7 @@ class DeleteSimulationView(generics.DestroyAPIView):
         instance.delete()
 
 class SimulationStatusView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request, pk):
         try:
