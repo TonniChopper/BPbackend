@@ -3,6 +3,8 @@ from django.utils import timezone
 from django.db import models
 from django.conf import settings  # Используем ссылку на кастомную модель User
 import os
+import hashlib
+import json
 
 
 class Simulation(models.Model):
@@ -25,11 +27,19 @@ class Simulation(models.Model):
         default='PENDING'
     )
     parameters = models.JSONField()
+    parameters_hash = models.CharField(max_length=64,db_index=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     def is_active(self):
         return timezone.now() < self.created_at + timedelta(days=2)
+
+    def save(self, *args, **kwargs):
+        # Generate parameters hash when saving
+        if self.parameters:
+            params_str = json.dumps(self.parameters, sort_keys=True)
+            self.parameters_hash = hashlib.md5(params_str.encode()).hexdigest()
+        super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         if hasattr(self, 'result'):

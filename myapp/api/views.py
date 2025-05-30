@@ -52,6 +52,11 @@ class SimulationDetailView(generics.RetrieveUpdateDestroyAPIView):
                 return Simulation.objects.filter(id=session_simulation_id, user__isnull=True)
             return Simulation.objects.none()
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 
 class SimulationResumeView(APIView):
     permission_classes = [IsAuthenticated]

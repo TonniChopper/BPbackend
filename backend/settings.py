@@ -40,6 +40,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'myapp.apps.MyappConfig',
     'corsheaders',
+    'rest_framework_simplejwt',
+    'django_celery_results',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -131,8 +134,8 @@ MEDIA_URL = '/media/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CELERY_BROKER_URL = 'redis://:euzl8ptRLsx3ielfGGP9th2mLaoWmLtC@redis-12610.c300.eu-central-1-1.ec2.redns.redis-cloud.com:12610/0'
-CELERY_RESULT_BACKEND = 'redis://:euzl8ptRLsx3ielfGGP9th2mLaoWmLtC@redis-12610.c300.eu-central-1-1.ec2.redns.redis-cloud.com:12610/0'
+CELERY_BROKER_URL = 'redis://default:mlmngcgvQSRlwWY4v45Lm6xl1x8XFw48@redis-17145.c55.eu-central-1-1.ec2.redns.redis-cloud.com:17145/0'
+CELERY_RESULT_BACKEND = 'redis://default:mlmngcgvQSRlwWY4v45Lm6xl1x8XFw48@redis-17145.c55.eu-central-1-1.ec2.redns.redis-cloud.com:17145/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
