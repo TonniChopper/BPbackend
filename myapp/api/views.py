@@ -130,7 +130,7 @@ class SimulationDownloadView(APIView):
 
             try:
                 if file_type == 'result':
-                    file_path = simulation.result.result_file.path
+                    file = simulation.result.result_file
                     filename = f'simulation_{pk}_result.txt'
                     content_type = 'text/plain'
                 elif file_type == 'mesh':
@@ -150,7 +150,7 @@ class SimulationDownloadView(APIView):
                     with open(temp_file.name, 'w') as f:
                         json.dump(simulation.result.summary, f, indent=2)
 
-                    file_path = temp_file.name
+                    file = temp_file.name
                     filename = f'simulation_{pk}_summary.json'
                     content_type = 'application/json'
                 else:

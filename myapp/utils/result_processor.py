@@ -2,12 +2,13 @@ import os
 import json
 import numpy as np
 import matplotlib
+import logging
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from django.conf import settings
 from django.core.files.base import ContentFile
 from .image_capture import ImageCapture
-
+logger = logging.getLogger(__name__)
 
 class ResultProcessor:
     """Класс для обработки результатов симуляции MAPDL"""

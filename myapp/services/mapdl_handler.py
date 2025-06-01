@@ -43,6 +43,8 @@ class MAPDLHandler:
             simulation_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_results', str(simulation_id))
             os.makedirs(simulation_dir, exist_ok=True)
 
+            solution_output_path = os.path.join(simulation_dir, 'solve_output.txt')
+
             mapdl.clear()
             mapdl.prep7()
 
@@ -86,6 +88,11 @@ class MAPDLHandler:
             mapdl.solve()
 
             mapdl.output()
+            if os.path.exists(solution_output_path):
+                file_size = os.path.getsize(solution_output_path)
+                logger.debug(f"Solution output file exists, size: {file_size} bytes")
+            else:
+                logger.debug(f"Solution output file not created at: {solution_output_path}")
 
             mapdl.post1()
             mapdl.set('LAST')
