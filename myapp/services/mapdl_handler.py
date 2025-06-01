@@ -76,6 +76,7 @@ class MAPDLHandler:
             mapdl.finish()
             mapdl.slashsolu()
 
+            mapdl.outres("STRS", "ALL") ## Toto by malo pomôcť nech je výstup aj Stress
             mapdl.solve()
 
             mapdl.post1()

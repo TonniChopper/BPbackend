@@ -2,15 +2,18 @@ import os
 import json
 import tempfile
 from django.shortcuts import render
+from redis import Redis
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import FileResponse
 from rest_framework.views import APIView
+
+from backend import settings
 from myapp.models import Simulation
 from myapp.api.serializers import SimulationSerializer, SimulationResultSerializer, UserSerializer
 from myapp.tasks.simulation_task import run_simulation_task_with_redis
-from myapp.services.simulation_service import SimulationService
+from myapp.services.simulation_service import SimulationService, logger
 from rest_framework.pagination import PageNumberPagination
 
 class StandardResultsSetPagination(PageNumberPagination):
