@@ -43,6 +43,8 @@ class ResultProcessor:
         # Напряжения
         nnum, stress = result.principal_nodal_stress(0)
         von_mises = stress[:, -1]  # von-Mises stress
+        logger.debug(f"Stress array shape: {stress.shape}, non-zero values: {np.count_nonzero(stress)}")
+        logger.debug(f"Von Mises range: {von_mises.min()} to {von_mises.max()}")
 
         # Сохраняем текстовый результат
         result_file_path = os.path.join(result_dir, 'result.txt')
@@ -54,6 +56,15 @@ class ResultProcessor:
             f.write(f"Average stress: {von_mises.mean()}\n")
             f.write(f"Total nodes: {len(result.mesh.nodes)}\n")
             f.write(f"Total elements: {len(result.mesh.enum)}\n")
+
+            solution_output_path = getattr(result, '_solution_output_path', None)
+            if solution_output_path and os.path.exists(solution_output_path):
+                f.write("\n\n--- MAPDL SOLUTION OUTPUT ---\n\n")
+                try:
+                    with open(solution_output_path, 'r') as solve_file:
+                        f.write(solve_file.read())
+                except Exception as e:
+                    f.write(f"Error reading solution output: {str(e)}")
 
         # Используем сохраненные изображения из mapdl_handler
         image_paths = getattr(result, '_image_paths', {})

@@ -76,12 +76,22 @@ class MAPDLHandler:
             mapdl.finish()
             mapdl.slashsolu()
 
+            mapdl.outres('ALL', 'ALL')  # Request all result items
+            mapdl.outres('NSOL', 'ALL')  # Nodal solution
+            mapdl.outres('RSOL', 'ALL')  # Reaction solution
             mapdl.outres("STRS", "ALL") ## Toto by malo pomôcť nech je výstup aj Stress
+
+            mapdl.output(solution_output_path, 'txt')
+
             mapdl.solve()
 
+            mapdl.output()
+
             mapdl.post1()
+            mapdl.set('LAST')
             result = mapdl.result
 
+            result._solution_output_path = solution_output_path
             image_paths = ImageCapture.save_simulation_images(mapdl, result, simulation_id, simulation_dir)
 
             result._image_paths = image_paths
