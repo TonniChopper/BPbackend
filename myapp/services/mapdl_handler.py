@@ -79,23 +79,18 @@ class MAPDLHandler:
             mapdl.slashsolu()
 
             mapdl.outres('ALL', 'ALL')  # Request all result items
-            mapdl.outres('NSOL', 'ALL')  # Nodal solution
-            mapdl.outres('RSOL', 'ALL')  # Reaction solution
+            # mapdl.outres('NSOL', 'ALL')  # Nodal solution
+            # mapdl.outres('RSOL', 'ALL')  # Reaction solution
             mapdl.outres("STRS", "ALL") ## Toto by malo pomôcť nech je výstup aj Stress
 
-            mapdl.output(solution_output_path, 'txt')
 
-            mapdl.solve()
+            solve_output = mapdl.solve(write_to_file=True)
 
-            mapdl.output()
-            if os.path.exists(solution_output_path):
-                file_size = os.path.getsize(solution_output_path)
-                logger.debug(f"Solution output file exists, size: {file_size} bytes")
-            else:
-                logger.debug(f"Solution output file not created at: {solution_output_path}")
+            with open(solution_output_path, 'w') as f:
+                f.write(str(solve_output))
 
             mapdl.post1()
-            mapdl.set('LAST')
+            mapdl.set(1)
             result = mapdl.result
 
             result._solution_output_path = solution_output_path

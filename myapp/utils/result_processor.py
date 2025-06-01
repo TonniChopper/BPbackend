@@ -42,10 +42,11 @@ class ResultProcessor:
         avg_displacement = displacement_norms_array.mean()
 
         # Напряжения
-        nnum, stress = result.principal_nodal_stress(0)
+        nnum, stress = result.principal_nodal_stress(1)
         von_mises = stress[:, -1]  # von-Mises stress
+        von_mises = von_mises[~np.isnan(von_mises)]
         logger.debug(f"Stress array shape: {stress.shape}, non-zero values: {np.count_nonzero(stress)}")
-        logger.debug(f"Von Mises range: {von_mises.min()} to {von_mises.max()}")
+        logger.debug(f"Von Mises range: {stress.min()} to {stress.max()}")
 
         # Сохраняем текстовый результат
         result_file_path = os.path.join(result_dir, 'result.txt')
