@@ -42,7 +42,7 @@ class ResultProcessor:
         avg_displacement = displacement_norms_array.mean()
 
         # Напряжения
-        nnum, stress = result.principal_nodal_stress(1)
+        nnum, stress = result.principal_nodal_stress(0)
         von_mises = stress[:, -1]  # von-Mises stress
         von_mises = von_mises[~np.isnan(von_mises)]
         logger.debug(f"Stress array shape: {stress.shape}, non-zero values: {np.count_nonzero(stress)}")
