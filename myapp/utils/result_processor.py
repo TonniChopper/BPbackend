@@ -11,19 +11,18 @@ from .image_capture import ImageCapture
 logger = logging.getLogger(__name__)
 
 class ResultProcessor:
-    """Класс для обработки результатов симуляции MAPDL"""
+    """Class for processing simulation results from MAPDL"""
 
     @staticmethod
     def process_result(result, simulation_id, parameters=None):
-        """Обрабатывает результаты MAPDL и сохраняет их в файлы"""
-        # Создаем директорию для результатов
+        """Process the simulation result and generate summary statistics."""
+        # Create a directory for the results
         result_dir = os.path.join(settings.MEDIA_ROOT, 'simulation_results', str(simulation_id))
         os.makedirs(result_dir, exist_ok=True)
 
-        # Получаем смещения и вычисляем их нормы
+        # Displascement calculations
         displacement_result = result.nodal_displacement(0)
 
-        # Используем простой список Python
         displacement_norms = []
         for disp in displacement_result:
             if hasattr(disp, '__iter__') and not isinstance(disp, np.ndarray):
@@ -36,19 +35,19 @@ class ResultProcessor:
 
         displacement_norms_array = np.array(displacement_norms)
 
-        # Статистика
+        # Statistics
         max_displacement = displacement_norms_array.max()
         min_displacement = displacement_norms_array.min()
         avg_displacement = displacement_norms_array.mean()
 
-        # Напряжения
+        # Stress calculations
         nnum, stress = result.principal_nodal_stress(0)
         von_mises = stress[:, -1]  # von-Mises stress
         von_mises = von_mises[~np.isnan(von_mises)]
         logger.debug(f"Stress array shape: {stress.shape}, non-zero values: {np.count_nonzero(stress)}")
         logger.debug(f"Von Mises range: {stress.min()} to {stress.max()}")
 
-        # Сохраняем текстовый результат
+        # Save the result statistics to a text file
         result_file_path = os.path.join(result_dir, 'result.txt')
         with open(result_file_path, 'w') as f:
             f.write(f"Maximum displacement: {max_displacement}\n")
@@ -68,10 +67,9 @@ class ResultProcessor:
                 except Exception as e:
                     f.write(f"Error reading solution output: {str(e)}")
 
-        # Используем сохраненные изображения из mapdl_handler
         image_paths = getattr(result, '_image_paths', {})
 
-        # Создаем сводку результатов
+        # Create summary statistics
         def safe_float(value):
             try:
                 float_val = float(value)
@@ -95,7 +93,6 @@ class ResultProcessor:
             'has_deformation_image': 'deformation_image' in image_paths,
         }
 
-        # Сохраняем JSON-сводку
         with open(os.path.join(result_dir, 'summary.json'), 'w') as f:
             json.dump(summary, f, indent=2)
 

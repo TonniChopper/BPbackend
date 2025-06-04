@@ -31,12 +31,11 @@ class SimulationService:
     @staticmethod
     @transaction.atomic
     def run_simulation(simulation_id):
-        """Запускает симуляцию и сохраняет результаты"""
+        """Run a simulation with the given ID, updating its status and saving results."""
         simulation = Simulation.objects.get(id=simulation_id)
         simulation.status = 'RUNNING'
         simulation.save()
 
-        # Добавляем ID в параметры
         parameters = dict(simulation.parameters)
         parameters['id'] = simulation_id
 
@@ -50,7 +49,7 @@ class SimulationService:
             processor = ResultProcessor()
             processed_result = processor.process_result(result, simulation_id)
 
-            # Создаем или обновляем результат симуляции
+            # Create or update the simulation result
             SimulationResult.objects.update_or_create(
                 simulation=simulation,
                 defaults={
