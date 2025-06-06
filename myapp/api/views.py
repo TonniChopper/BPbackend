@@ -249,23 +249,21 @@ class CancelSimulationView(APIView):
         try:
             simulation = Simulation.objects.get(pk=pk, user=request.user)
         except Simulation.DoesNotExist:
-            return Response({'detail': 'Симуляция не найдена.'},
+            return Response({'detail': 'Simulation not found.'},
                           status=status.HTTP_404_NOT_FOUND)
 
-        # Проверяем, что симуляция в активном состоянии
         if simulation.status not in ['PENDING', 'RUNNING']:
-            return Response({'detail': 'Можно отменить только запущенную или ожидающую симуляцию.'},
+            return Response({'detail': 'Only pending or running simulations can be canceled.'},
                           status=status.HTTP_400_BAD_REQUEST)
 
-        # Обновляем статус
         simulation.status = 'FAILED'
         simulation.save()
 
-        # В реальном приложении здесь также нужно отменить задачу Celery
+        # In a real application, you would also cancel the task in Celery
         # from celery.task.control import revoke
         # revoke(task_id, terminate=True)
 
-        return Response({'detail': 'Симуляция отменена.'}, status=status.HTTP_200_OK)
+        return Response({'detail': 'Simulation canceled.'}, status=status.HTTP_200_OK)
 
 class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
