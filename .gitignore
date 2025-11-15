@@ -1,42 +1,36 @@
-# General
-*.log
-*.env
-*.DS_Store
-
 # Python
+*.pyc
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-
-# Virtual Environment
-venv/
+*$py.class
+*.so
+.Python
 bpvenv/
+venv/
+ENV/
+env/
 
 # Django
-*.sqlite3
-media/
-staticfiles/
+*.log
+db.sqlite3
+db.sqlite3-journal
+/media/
+/static/
+.env
 
-# Node.js
-node_modules/
-
-# React
-build/
-
-# IDEs and Editors
+# IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
-# Coverage reports
-.coverage
-coverage/
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Test output
-junit.xml
+# Project specific
+media/simulation_results/
+media/mapdl_runs/
 
-# Miscellaneous
-*.bak
-*.tmp
-*.old

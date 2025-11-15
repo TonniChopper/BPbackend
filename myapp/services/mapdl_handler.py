@@ -14,12 +14,14 @@ logger = logging.getLogger(__name__)
 
 class MAPDLHandler:
     _instance = None
+    _lock = threading.Lock()
     _mapdl = None
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def get_mapdl(self):

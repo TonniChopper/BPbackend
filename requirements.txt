@@ -1,0 +1,15 @@
+Django==5.1.0
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.0
+django-cors-headers==4.3.0
+django-celery-results==2.5.1
+django-celery-beat==2.5.0
+celery==5.3.4
+redis==5.0.1
+ansys-mapdl-core==0.68.0
+numpy==1.26.0
+matplotlib==3.8.0
+Pillow==10.1.0
+pytest==8.3.3
+pytest-django==4.7.0
+

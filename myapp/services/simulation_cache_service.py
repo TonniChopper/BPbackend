@@ -12,7 +12,7 @@ class SimulationCacheService:
     def get_params_hash(parameters):
         """Generate a hash from simulation parameters"""
         params_str = json.dumps(parameters, sort_keys=True)
-        return hashlib.md5(params_str.encode()).hexdigest()
+        return hashlib.sha256(params_str.encode()).hexdigest()
 
     @staticmethod
     def get_cached_simulation(parameters):
@@ -31,7 +31,7 @@ class SimulationCacheService:
             return None
 
     @staticmethod
-    def cache_simulation(simulation_id, parameters, ttl=604800):
+    def cache_simulation(simulation_id, parameters, ttl=SIMULATION_CACHE_TTL):
         """Cache a simulation for future reuse"""
         try:
             params_hash = SimulationCacheService.get_params_hash(parameters)

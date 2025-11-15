@@ -23,8 +23,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # 30 minutes
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),     # 1 day
 }
 
 
@@ -57,10 +57,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.urls'
-CORS_ALLOW_ALL_ORIGINS = True
-# CORS_ALLOWED_ORIGINS = [
-#     'http://localhost:5173',
-# ]
+
+# CORS - for development, can allow all or specify origins
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL', 'False') == 'True'
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -134,8 +135,14 @@ MEDIA_URL = '/media/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CELERY_BROKER_URL = 'redis://default:mlmngcgvQSRlwWY4v45Lm6xl1x8XFw48@redis-17145.c55.eu-central-1-1.ec2.redns.redis-cloud.com:17145/0'
-CELERY_RESULT_BACKEND = 'redis://default:mlmngcgvQSRlwWY4v45Lm6xl1x8XFw48@redis-17145.c55.eu-central-1-1.ec2.redns.redis-cloud.com:17145/0'
+# Redis configuration
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis-17145.c55.eu-central-1-1.ec2.redns.redis-cloud.com')
+REDIS_PORT = os.getenv('REDIS_PORT', '17145')
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', 'mlmngcgvQSRlwWY4v45Lm6xl1x8XFw48')
+REDIS_DB = os.getenv('REDIS_DB', '0')
+
+CELERY_BROKER_URL = f'redis://default:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
+CELERY_RESULT_BACKEND = f'redis://default:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

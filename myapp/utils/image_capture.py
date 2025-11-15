@@ -76,11 +76,11 @@ class ImageCapture:
             return None
 
     @staticmethod
-    def capture_deformation(mapdl, save_path, window_size=[1920, 1080]):
+    def capture_deformation(result, save_path, window_size=[1920, 1080]):
         """Generate and save an image of the deformation results"""
         try:
             plt.figure(figsize=(window_size[0] / 100, window_size[1] / 100))
-            mapdl.plot_nodal_displacement(0, 'NORM', background='W', show_edges=True, text_color='k',
+            result.plot_nodal_displacement(0, 'NORM', background='W', show_edges=True, text_color='k',
                                                add_text=True,
                                                window_size=[1920, 1080], screenshot=save_path,
                                                off_screen=True)

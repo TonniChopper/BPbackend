@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from ..models import Simulation
 from ..services.simulation_cache_service import SimulationCacheService
+from ..constants import OLD_SIMULATION_THRESHOLD_DAYS
 from redis import Redis
 import json
 from django.conf import settings
@@ -16,8 +17,8 @@ def clean_old_simulations():
     Clean up old simulations from the database and remove invalid cache entries
     """
     try:
-        # Delete simulations older than 30 days
-        cutoff_date = timezone.now() - timedelta(days=30)
+        # Delete simulations older than threshold
+        cutoff_date = timezone.now() - timedelta(days=OLD_SIMULATION_THRESHOLD_DAYS)
         old_simulations = Simulation.objects.filter(created_at__lt=cutoff_date)
 
         count = old_simulations.count()

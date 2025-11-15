@@ -1,13 +1,18 @@
 from datetime import timedelta
 from django.utils import timezone
 from django.db import models
-from django.conf import settings  # Используем ссылку на кастомную модель User
-import os
+from django.conf import settings
 import hashlib
 import json
 
 
 class Simulation(models.Model):
+    """
+    Model representing a MAPDL simulation
+
+    Stores simulation parameters, status, and metadata.
+    Uses SHA-256 hash for caching identical simulations.
+    """
     STATUS_CHOICES = [
         ('PENDING', 'Pending'),
         ('RUNNING', 'Running'),
@@ -27,7 +32,13 @@ class Simulation(models.Model):
         default='PENDING'
     )
     parameters = models.JSONField()
-    parameters_hash = models.CharField(max_length=64,db_index=True, null=True, blank=True)
+    parameters_hash = models.CharField(
+        max_length=128,
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text='SHA-256 hash of parameters for caching'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
@@ -35,10 +46,10 @@ class Simulation(models.Model):
         return timezone.now() < self.created_at + timedelta(days=2)
 
     def save(self, *args, **kwargs):
-        # Generate parameters hash when saving
+        # Generate parameters hash when saving (SHA-256)
         if self.parameters:
             params_str = json.dumps(self.parameters, sort_keys=True)
-            self.parameters_hash = hashlib.md5(params_str.encode()).hexdigest()
+            self.parameters_hash = hashlib.sha256(params_str.encode()).hexdigest()
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -51,15 +62,42 @@ class Simulation(models.Model):
         return f"Simulation {self.pk} for user {username}"
 
 class SimulationResult(models.Model):
-    simulation = models.OneToOneField(Simulation, on_delete=models.CASCADE, related_name='result')
-    result_file = models.FileField(upload_to='simulation_results/', null=True)
+    """
+    Model storing simulation results and generated images
 
-    mesh_image = models.ImageField(upload_to='simulation_results/', null=True)
-    stress_image = models.ImageField(upload_to='simulation_results/', null=True)
-    deformation_image = models.ImageField(upload_to='simulation_results/', null=True)
-
-    summary = models.JSONField(default=dict)
+    Contains result files, visualization images (mesh, stress, deformation),
+    and summary statistics in JSON format.
+    """
+    simulation = models.OneToOneField(
+        Simulation,
+        on_delete=models.CASCADE,
+        related_name='result'
+    )
+    result_file = models.FileField(
+        upload_to='simulation_results/',
+        null=True,
+        help_text='Text file with complete simulation results'
+    )
+    mesh_image = models.ImageField(
+        upload_to='simulation_results/',
+        null=True,
+        help_text='Mesh visualization image'
+    )
+    stress_image = models.ImageField(
+        upload_to='simulation_results/',
+        null=True,
+        help_text='Stress distribution (von Mises) image'
+    )
+    deformation_image = models.ImageField(
+        upload_to='simulation_results/',
+        null=True,
+        help_text='Deformation visualization image'
+    )
+    summary = models.JSONField(
+        default=dict,
+        help_text='Summary statistics (max/min/avg stress and displacement)'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-         return f"Result for Simulation {self.simulation.pk}"
+        return f"Result for Simulation {self.simulation.pk}"

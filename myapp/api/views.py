@@ -1,7 +1,9 @@
 import os
 import json
 import tempfile
-from django.shortcuts import render
+from datetime import timedelta
+from django.db import transaction
+from django.utils import timezone
 from redis import Redis
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -11,8 +13,7 @@ from rest_framework.views import APIView
 
 from backend import settings
 from myapp.models import Simulation
-from myapp.api.serializers import SimulationSerializer, SimulationResultSerializer, UserSerializer
-from myapp.tasks.simulation_task import run_simulation_task_with_redis
+from myapp.api.serializers import SimulationSerializer, UserSerializer
 from myapp.services.simulation_service import SimulationService, logger
 from rest_framework.pagination import PageNumberPagination
 
@@ -100,7 +101,7 @@ class SimulationResumeView(APIView):
             #     return Response({'detail': 'Simulation cannot be resumed.'}, status=status.HTTP_400_BAD_REQUEST)
             simulation.status = 'PENDING'
             simulation.save()
-            # Запускаем асинхронную задачу вместо синхронного вызова
+            # Queue async task instead of synchronous execution
             SimulationService.queue_simulation(simulation.id)
             return Response({'detail': 'Simulation resumed.'}, status=status.HTTP_200_OK)
         except Simulation.DoesNotExist:
@@ -111,7 +112,7 @@ class SimulationDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, file_type):
-        global file
+        file_path = None
         try:
             if request.user.is_authenticated:
                 simulation = Simulation.objects.get(pk=pk, user=request.user)
@@ -120,8 +121,7 @@ class SimulationDownloadView(APIView):
                 if session_simulation_id and str(pk) == str(session_simulation_id):
                     simulation = Simulation.objects.get(pk=pk, user__isnull=True)
                 else:
-                    return Response({'detail': 'Access denied'},
-                                    status=status.HTTP_403_FORBIDDEN)
+                    return Response({'detail': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
             if simulation.status != 'COMPLETED':
                 return Response({'detail': 'Simulation results not ready.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -130,49 +130,50 @@ class SimulationDownloadView(APIView):
 
             try:
                 if file_type == 'result':
-                    file = simulation.result.result_file
+                    file_path = simulation.result.result_file.path
                     filename = f'simulation_{pk}_result.txt'
                     content_type = 'text/plain'
                 elif file_type == 'mesh':
-                    file = simulation.result.mesh_image
+                    file_path = simulation.result.mesh_image.path
                     filename = f'simulation_{pk}_mesh.png'
                     content_type = 'image/png'
                 elif file_type == 'stress':
-                    file = simulation.result.stress_image
+                    file_path = simulation.result.stress_image.path
                     filename = f'simulation_{pk}_stress.png'
                     content_type = 'image/png'
                 elif file_type == 'deformation':
-                    file = simulation.result.deformation_image
+                    file_path = simulation.result.deformation_image.path
                     filename = f'simulation_{pk}_deform.png'
                     content_type = 'image/png'
                 elif file_type == 'summary':
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
-                    with open(temp_file.name, 'w') as f:
-                        json.dump(simulation.result.summary, f, indent=2)
-
-                    file = temp_file.name
+                    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_file:
+                        json.dump(simulation.result.summary, temp_file, indent=2)
+                        file_path = temp_file.name
                     filename = f'simulation_{pk}_summary.json'
                     content_type = 'application/json'
                 else:
                     return Response({'detail': 'Invalid file type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                if os.path.exists(file.path):
+                if file_path and os.path.exists(file_path):
                     response = FileResponse(
-                        open(file.path, 'rb'),
+                        open(file_path, 'rb'),
                         as_attachment=True,
                         filename=filename,
                         content_type=content_type
                     )
                     if file_type == 'summary':
-                        os.unlink(file.path)
+                        # Cleanup temporary file after sending
+                        try:
+                            os.unlink(file_path)
+                        except OSError:
+                            pass
 
-                    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file.path)}"'
+                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
                     return response
                 else:
                     return Response({'detail': 'File not found on server.'}, status=status.HTTP_404_NOT_FOUND)
             except (AttributeError, ValueError) as e:
-                return Response({'detail': f'Error accessing file: {str(e)}'},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({'detail': f'Error accessing file: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Simulation.DoesNotExist:
             return Response({'detail': 'Simulation not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -256,15 +257,148 @@ class CancelSimulationView(APIView):
             return Response({'detail': 'Only pending or running simulations can be canceled.'},
                           status=status.HTTP_400_BAD_REQUEST)
 
+        # Get task_id from Redis
+        try:
+            redis_client = Redis.from_url(settings.CELERY_BROKER_URL)
+            task_id = redis_client.get(f"simulation_task_id:{pk}")
+
+            if task_id:
+                task_id = task_id.decode('utf-8')
+                # Cancel the Celery task
+                from celery import current_app
+                current_app.control.revoke(task_id, terminate=True, signal='SIGKILL')
+                logger.info(f"Cancelled Celery task {task_id} for simulation {pk}")
+        except Exception as e:
+            logger.error(f"Error cancelling task: {e}")
+
         simulation.status = 'FAILED'
         simulation.save()
 
-        # In a real application, you would also cancel the task in Celery
-        # from celery.task.control import revoke
-        # revoke(task_id, terminate=True)
 
         return Response({'detail': 'Simulation canceled.'}, status=status.HTTP_200_OK)
 
 class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
+
+
+class HealthCheckView(APIView):
+    """Health check endpoint for monitoring system status"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from django.db import connection
+
+        try:
+            # Check database connection
+            connection.ensure_connection()
+            db_status = "healthy"
+        except Exception as e:
+            db_status = f"unhealthy: {str(e)}"
+
+        # Check Redis connection
+        try:
+            redis_client = Redis.from_url(settings.CELERY_BROKER_URL)
+            redis_client.ping()
+            redis_status = "healthy"
+        except Exception as e:
+            redis_status = f"unhealthy: {str(e)}"
+
+        # Overall status
+        status_code = status.HTTP_200_OK if db_status == "healthy" and redis_status == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE
+
+        return Response({
+            'status': 'healthy' if status_code == 200 else 'unhealthy',
+            'database': db_status,
+            'redis': redis_status,
+            'timestamp': timezone.now().isoformat()
+        }, status=status_code)
+
+
+class SimulationStatisticsView(APIView):
+    """Get user's simulation statistics"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Count, Avg, Q
+
+        user_simulations = Simulation.objects.filter(user=request.user)
+
+        # Calculate statistics
+        total = user_simulations.count()
+        by_status = user_simulations.values('status').annotate(count=Count('status'))
+
+        # Calculate average completion time for completed simulations
+        completed = user_simulations.filter(status='COMPLETED', completed_at__isnull=False)
+        avg_time = None
+        if completed.exists():
+            from django.db.models import F, ExpressionWrapper, DurationField
+            avg_duration = completed.annotate(
+                duration=ExpressionWrapper(
+                    F('completed_at') - F('created_at'),
+                    output_field=DurationField()
+                )
+            ).aggregate(avg=Avg('duration'))['avg']
+            if avg_duration:
+                avg_time = avg_duration.total_seconds()
+
+        # Recent simulations (last 7 days)
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        recent_count = user_simulations.filter(created_at__gte=seven_days_ago).count()
+
+        return Response({
+            'total_simulations': total,
+            'by_status': {item['status']: item['count'] for item in by_status},
+            'average_completion_time_seconds': avg_time,
+            'recent_simulations_7_days': recent_count,
+        })
+
+
+class BatchDeleteSimulationsView(APIView):
+    """Batch delete multiple simulations"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        simulation_ids = request.data.get('simulation_ids', [])
+
+        if not isinstance(simulation_ids, list) or not simulation_ids:
+            return Response(
+                {'detail': 'simulation_ids must be a non-empty list'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get simulations belonging to user
+        simulations = Simulation.objects.filter(
+            id__in=simulation_ids,
+            user=request.user
+        )
+
+        deleted_count = simulations.count()
+
+        if deleted_count == 0:
+            return Response(
+                {'detail': 'No simulations found or you do not have permission'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Delete with transaction
+        with transaction.atomic():
+            for simulation in simulations:
+                if hasattr(simulation, 'result'):
+                    # Delete files
+                    for field_name in ['mesh_image', 'stress_image', 'deformation_image', 'result_file']:
+                        file_field = getattr(simulation.result, field_name, None)
+                        if file_field and hasattr(file_field, 'path'):
+                            try:
+                                if os.path.exists(file_field.path):
+                                    os.remove(file_field.path)
+                            except OSError as e:
+                                logger.error(f"Failed to delete file {file_field.path}: {e}")
+
+                    simulation.result.delete()
+                simulation.delete()
+
+        return Response({
+            'detail': f'Successfully deleted {deleted_count} simulation(s)',
+            'deleted_count': deleted_count
+        })
